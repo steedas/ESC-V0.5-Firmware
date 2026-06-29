@@ -49,10 +49,12 @@
 #define MOTOR_RAMP_EHZ_PER_SEC   15.0f
 #define MOTOR_DEBUG_PRINT_MS     10000000U
 #define MOTOR_SVPWM_UPDATE_US    250U
-#define MOTOR_SVPWM_MAX_INDEX    0.8660254f
+#define MOTOR_SVPWM_MAX_INDEX    0.57735026919f
+#define MOTOR_OPEN_LOOP_MODULATION 0.08f
 #define MOTOR_TIM1_DEADTIME_TICKS 64U
 
 #define PI_F                     3.14159265359f
+#define TWO_PI_F                 6.28318530718f
 #define SQRT3_F                  1.73205080757f
 
 /* USER CODE END PD */
@@ -99,6 +101,7 @@ static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USB_PCD_Init(void);
 /* USER CODE BEGIN PFP */
+static void Set_Phase_PWM_Ticks(uint32_t phase_a, uint32_t phase_b, uint32_t phase_c);
 
 /* USER CODE END PFP */
 
@@ -361,8 +364,16 @@ uint32_t Get_PWM_FrequencyHz(void)
   uint32_t tim_clk_hz = Get_TIM1_ClockHz();
   uint32_t prescaler = htim1.Init.Prescaler + 1U;
   uint32_t period = htim1.Init.Period + 1U;
+  uint32_t center_aligned_divider = 1U;
 
-  return tim_clk_hz / (prescaler * period);
+  if (htim1.Init.CounterMode == TIM_COUNTERMODE_CENTERALIGNED1 ||
+      htim1.Init.CounterMode == TIM_COUNTERMODE_CENTERALIGNED2 ||
+      htim1.Init.CounterMode == TIM_COUNTERMODE_CENTERALIGNED3)
+  {
+    center_aligned_divider = 2U;
+  }
+
+  return tim_clk_hz / (prescaler * period * center_aligned_divider);
 }
 
 float Get_CommutationStepFrequencyHz(void)
@@ -439,6 +450,21 @@ static float WrapUnitTurn(float turns)
   return turns;
 }
 
+static float WrapRadians(float radians)
+{
+  while (radians >= TWO_PI_F)
+  {
+    radians -= TWO_PI_F;
+  }
+
+  while (radians < 0.0f)
+  {
+    radians += TWO_PI_F;
+  }
+
+  return radians;
+}
+
 static uint16_t Clamp_PWM_Ticks(uint32_t duty)
 {
   uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim1);
@@ -454,6 +480,101 @@ static uint16_t Clamp_PWM_Ticks(uint32_t duty)
 static void Set_PWM_DutyTicks(uint16_t duty)
 {
   g_pwm_duty_ticks = Clamp_PWM_Ticks(duty);
+}
+
+void TIM1_Set_EdgeAligned_For_OpenLoopPWM(void)
+{
+  __HAL_TIM_DISABLE(&htim1);
+  TIM1->CR1 &= ~(TIM_CR1_CMS | TIM_CR1_DIR);
+  TIM1->BDTR &= ~TIM_BDTR_DTG;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  __HAL_TIM_SET_COUNTER(&htim1, 0U);
+  TIM1->EGR = TIM_EGR_UG;
+  __HAL_TIM_ENABLE(&htim1);
+}
+
+void TIM1_Set_CenterAligned_For_SVPWM(void)
+{
+  Set_Phase_PWM_Ticks(__HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
+                      __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
+                      __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U);
+
+  __HAL_TIM_DISABLE(&htim1);
+  TIM1->CR1 = (TIM1->CR1 & ~(TIM_CR1_CMS | TIM_CR1_DIR)) | TIM_COUNTERMODE_CENTERALIGNED1;
+  TIM1->BDTR = (TIM1->BDTR & ~TIM_BDTR_DTG) | MOTOR_TIM1_DEADTIME_TICKS;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
+  __HAL_TIM_SET_COUNTER(&htim1, 0U);
+  TIM1->EGR = TIM_EGR_UG;
+  __HAL_TIM_ENABLE(&htim1);
+}
+
+static void Set_Phase_PWM_Ticks(uint32_t phase_a, uint32_t phase_b, uint32_t phase_c)
+{
+  uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim1);
+
+  if (phase_a > arr)
+  {
+    phase_a = arr;
+  }
+
+  if (phase_b > arr)
+  {
+    phase_b = arr;
+  }
+
+  if (phase_c > arr)
+  {
+    phase_c = arr;
+  }
+
+  TIM1->CCR1 = phase_a;
+  TIM1->CCR2 = phase_b;
+  TIM1->CCR3 = phase_c;
+}
+
+static void Inverse_Park_Transform(float vd, float vq, float sin_theta, float cos_theta, float *v_alpha, float *v_beta)
+{
+  *v_alpha = vd * cos_theta - vq * sin_theta;
+  *v_beta = vd * sin_theta + vq * cos_theta;
+}
+
+static void Set_OpenLoop_SVPWM(float electrical_angle_rad, float modulation_index)
+{
+  float sin_theta = sinf(electrical_angle_rad);
+  float cos_theta = cosf(electrical_angle_rad);
+  float vd = 0.0f;
+  float vq;
+  float v_alpha;
+  float v_beta;
+  float va;
+  float vb;
+  float vc;
+  float v_max;
+  float v_min;
+  float v_offset;
+  uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim1);
+
+  modulation_index = ClampFloat(modulation_index, 0.0f, MOTOR_SVPWM_MAX_INDEX);
+  vq = modulation_index;
+
+  /* Vd = 0, Vq = modulation_index. This makes a rotating voltage vector without encoder feedback. */
+  Inverse_Park_Transform(vd, vq, sin_theta, cos_theta, &v_alpha, &v_beta);
+
+  va = v_alpha;
+  vb = -0.5f * v_alpha + (0.5f * SQRT3_F) * v_beta;
+  vc = -0.5f * v_alpha - (0.5f * SQRT3_F) * v_beta;
+
+  v_max = fmaxf(va, fmaxf(vb, vc));
+  v_min = fminf(va, fminf(vb, vc));
+  v_offset = -0.5f * (v_max + v_min);
+
+  va = ClampFloat(0.5f + va + v_offset, 0.0f, 1.0f);
+  vb = ClampFloat(0.5f + vb + v_offset, 0.0f, 1.0f);
+  vc = ClampFloat(0.5f + vc + v_offset, 0.0f, 1.0f);
+
+  Set_Phase_PWM_Ticks((uint32_t)(va * (float)arr),
+                      (uint32_t)(vb * (float)arr),
+                      (uint32_t)(vc * (float)arr));
 }
 
 static void CommutateStep(uint8_t step, uint16_t duty)
@@ -497,6 +618,8 @@ void BLDC_SixStep(void)
   float electrical_hz = MOTOR_START_ELECTRICAL_HZ;
   uint32_t step_delay_us = ElectricalHz_ToStepDelayUs(electrical_hz);
 
+  TIM1_Set_EdgeAligned_For_OpenLoopPWM();
+
   while (1)
   {
     g_actual_electrical_hz = electrical_hz;
@@ -512,6 +635,8 @@ void BLDC_SixStep_Read(void)
   float offset_A = 1.66f;
   float offset_B = 1.66f;
   float offset_C = 1.66f;
+
+  TIM1_Set_EdgeAligned_For_OpenLoopPWM();
 
   while (1)
   {
@@ -551,6 +676,8 @@ void BLDC_SixStep_Read_FILTERED(void)
   float offset_B = 1.66f;
   float offset_C = 1.66f;
   uint32_t duty_ticks = __HAL_TIM_GET_AUTORELOAD(&htim1)*DESIRED_MOTOR_DUTY;
+
+  TIM1_Set_EdgeAligned_For_OpenLoopPWM();
   Set_PWM_DutyTicks(duty_ticks);
   g_target_electrical_hz = MOTOR_START_ELECTRICAL_HZ;
   g_actual_electrical_hz = MOTOR_START_ELECTRICAL_HZ;
@@ -613,6 +740,8 @@ void BLDC_SixStep_RampLoop(void)
   uint32_t last_tick = HAL_GetTick();
 
   uint32_t duty_ticks = __HAL_TIM_GET_AUTORELOAD(&htim1)*DESIRED_MOTOR_DUTY;
+
+  TIM1_Set_EdgeAligned_For_OpenLoopPWM();
   Set_PWM_DutyTicks(duty_ticks);
   g_target_electrical_hz = MOTOR_HIGH_ELECTRICAL_HZ;
   g_actual_electrical_hz = MOTOR_LOW_ELECTRICAL_HZ;
@@ -648,6 +777,69 @@ void BLDC_SixStep_RampLoop(void)
 
     CommutateStep(step++, g_pwm_duty_ticks);
     delay_us(ElectricalHz_ToStepDelayUs(g_actual_electrical_hz));
+  }
+}
+
+void BLDC_OpenLoop_SVPWM_RampLoop(void)
+{
+  float electrical_angle_rad = 0.0f;
+  float electrical_hz = MOTOR_START_ELECTRICAL_HZ;
+  uint32_t last_update_cycles = DWT->CYCCNT;
+  uint32_t last_tick = HAL_GetTick();
+  uint32_t start_tick = last_tick;
+  uint32_t last_print_tick = last_tick;
+  const float update_period_sec = (float)MOTOR_SVPWM_UPDATE_US / 1000000.0f;
+  const uint32_t update_period_cycles = (SystemCoreClock / 1000000U) * MOTOR_SVPWM_UPDATE_US;
+
+  g_target_electrical_hz = MOTOR_HIGH_ELECTRICAL_HZ;
+  g_actual_electrical_hz = electrical_hz;
+  TIM1_Set_CenterAligned_For_SVPWM();
+  Set_OpenLoop_SVPWM(electrical_angle_rad, 0.0f);
+
+  while (1)
+  {
+    uint32_t now_cycles = DWT->CYCCNT;
+
+    if ((now_cycles - last_update_cycles) >= update_period_cycles)
+    {
+      uint32_t now_tick = HAL_GetTick();
+      float ramp_dt_sec = (now_tick - last_tick) / 1000.0f;
+
+      last_update_cycles += update_period_cycles;
+      last_tick = now_tick;
+
+      if ((now_tick - start_tick) < 3000U)
+      {
+        g_target_electrical_hz = MOTOR_START_ELECTRICAL_HZ;
+      }
+      else
+      {
+        g_target_electrical_hz = MOTOR_HIGH_ELECTRICAL_HZ;
+      }
+
+      electrical_hz = RampToward(electrical_hz,
+                                 g_target_electrical_hz,
+                                 MOTOR_RAMP_EHZ_PER_SEC,
+                                 ramp_dt_sec);
+
+      g_actual_electrical_hz = electrical_hz;
+      electrical_angle_rad = WrapRadians(electrical_angle_rad +
+                                         (TWO_PI_F * electrical_hz * update_period_sec));
+
+      Set_OpenLoop_SVPWM(electrical_angle_rad, MOTOR_OPEN_LOOP_MODULATION);
+
+      if ((now_tick - last_print_tick) >= MOTOR_DEBUG_PRINT_MS)
+      {
+        last_print_tick = now_tick;
+        printf("open-loop svpwm: target %.2f eHz, actual %.2f eHz, rpm %.1f, pwm %lu Hz, mod %.3f, arr %lu\r\n",
+               g_target_electrical_hz,
+               g_actual_electrical_hz,
+               Get_MechanicalRPM(),
+               Get_PWM_FrequencyHz(),
+               MOTOR_OPEN_LOOP_MODULATION,
+               __HAL_TIM_GET_AUTORELOAD(&htim1));
+      }
+    }
   }
 }
 
@@ -864,6 +1056,10 @@ int __io_putchar(int ch)
 
 void Start_PWM(void)
 {
+  Set_Phase_PWM_Ticks(__HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
+                      __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
+                      __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U);
+
   __HAL_TIM_MOE_ENABLE(&htim1);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -921,7 +1117,7 @@ int main(void)
 
   Start_PWM();
   Print_Frequency_Info();
-  BLDC_SixStep_RampLoop();
+  BLDC_OpenLoop_SVPWM_RampLoop();
 
   /* USER CODE END 2 */
 
