@@ -37,21 +37,27 @@
 #define VGS_STATUS2_REG_ADDR     0x01U
 #define DRIVER_CONTROL_REG_ADDR  0x02U
 
+#define DRV_CTRL_CLR_FLT         (1U << 0)
+#define DRV_CTRL_BRAKE           (1U << 1)
+#define DRV_CTRL_COAST           (1U << 2)
+#define DRV_CTRL_PWM_MODE_MASK   (3U << 5)
+#define DRV_CTRL_PWM_MODE_6X     (0U << 5)
+
 #define ADC_VREF                 3.3f
 #define CURRENT_GAIN             (0.0015f * 20.0f)
 
 #define MOTOR_POLE_PAIRS         12U
 #define MOTOR_DUTY_TICKS         200U
-#define DESIRED_MOTOR_DUTY       0.1f
+#define DESIRED_MOTOR_DUTY       0.3f
 #define MOTOR_START_ELECTRICAL_HZ 5.0f
-#define MOTOR_HIGH_ELECTRICAL_HZ 50.0f
+#define MOTOR_HIGH_ELECTRICAL_HZ 500.0f
 #define MOTOR_LOW_ELECTRICAL_HZ  10.0f
 #define MOTOR_RAMP_EHZ_PER_SEC   15.0f
 #define MOTOR_DEBUG_PRINT_MS     10000000U
 #define MOTOR_SVPWM_UPDATE_US    250U
 #define MOTOR_SVPWM_MAX_INDEX    0.57735026919f
 #define MOTOR_OPEN_LOOP_MODULATION 0.08f
-#define MOTOR_TIM1_DEADTIME_TICKS 64U
+#define MOTOR_TIM1_DEADTIME_TICKS 0U
 
 #define PI_F                     3.14159265359f
 #define TWO_PI_F                 6.28318530718f
@@ -86,6 +92,9 @@ static uint8_t prev_low = 0;
 volatile float g_target_electrical_hz = MOTOR_START_ELECTRICAL_HZ;
 volatile float g_actual_electrical_hz = MOTOR_START_ELECTRICAL_HZ;
 volatile uint16_t g_pwm_duty_ticks = MOTOR_DUTY_TICKS;
+volatile uint16_t g_drv_fault_status1 = 0U;
+volatile uint16_t g_drv_vgs_status2 = 0U;
+volatile uint16_t g_drv_driver_control = 0U;
 
 /* USER CODE END PV */
 
@@ -102,6 +111,8 @@ static void MX_USART1_UART_Init(void);
 static void MX_USB_PCD_Init(void);
 /* USER CODE BEGIN PFP */
 static void Set_Phase_PWM_Ticks(uint32_t phase_a, uint32_t phase_b, uint32_t phase_c);
+static void Debug_Status1_Set(GPIO_PinState state);
+static void Debug_Status2_Set(GPIO_PinState state);
 
 /* USER CODE END PFP */
 
@@ -156,16 +167,43 @@ void delay_us(uint32_t us)
   }
 }
 
+static uint8_t SPI1_WaitNotBusy(uint32_t timeout_ms)
+{
+  uint32_t start_tick = HAL_GetTick();
+
+  while (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_BSY))
+  {
+    if ((HAL_GetTick() - start_tick) >= timeout_ms)
+    {
+      Debug_Status1_Set(GPIO_PIN_SET);
+      return 0U;
+    }
+  }
+
+  return 1U;
+}
+
 uint16_t DRV8353_ReadSPI(uint8_t reg)
 {
   uint16_t rx = 0;
   uint16_t tx = 0x8000U | ((reg & 0x0FU) << 11);
+  HAL_StatusTypeDef status;
 
-  while (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_BSY))
+  if (SPI1_WaitNotBusy(2U) == 0U)
   {
+    return 0x07FFU;
   }
 
-  HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&tx, (uint8_t *)&rx, 1, HAL_MAX_DELAY);
+  HAL_GPIO_WritePin(DRV_SCS_N_GPIO_Port, DRV_SCS_N_Pin, GPIO_PIN_RESET);
+  delay_us(1);
+  status = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&tx, (uint8_t *)&rx, 1, HAL_MAX_DELAY);
+  delay_us(1);
+  HAL_GPIO_WritePin(DRV_SCS_N_GPIO_Port, DRV_SCS_N_Pin, GPIO_PIN_SET);
+
+  if (status != HAL_OK)
+  {
+    Debug_Status1_Set(GPIO_PIN_SET);
+  }
 
   delay_us(1);
 
@@ -176,14 +214,65 @@ void DRV8353_WriteSPI(uint8_t reg, uint16_t data)
 {
   uint16_t rx = 0;
   uint16_t tx = ((reg & 0x0FU) << 11) | (data & 0x07FFU);
+  HAL_StatusTypeDef status;
 
-  while (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_BSY))
+  if (SPI1_WaitNotBusy(2U) == 0U)
   {
+    return;
   }
 
-  HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&tx, (uint8_t *)&rx, 1, HAL_MAX_DELAY);
+  HAL_GPIO_WritePin(DRV_SCS_N_GPIO_Port, DRV_SCS_N_Pin, GPIO_PIN_RESET);
+  delay_us(1);
+  status = HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&tx, (uint8_t *)&rx, 1, HAL_MAX_DELAY);
+  delay_us(1);
+  HAL_GPIO_WritePin(DRV_SCS_N_GPIO_Port, DRV_SCS_N_Pin, GPIO_PIN_SET);
+
+  if (status != HAL_OK)
+  {
+    Debug_Status1_Set(GPIO_PIN_SET);
+  }
 
   delay_us(1);
+}
+
+uint8_t DRV8353_ReadFaults(void)
+{
+  g_drv_fault_status1 = DRV8353_ReadSPI(FAULT_STATUS1_REG_ADDR);
+  g_drv_vgs_status2 = DRV8353_ReadSPI(VGS_STATUS2_REG_ADDR);
+
+  return ((g_drv_fault_status1 != 0U) || (g_drv_vgs_status2 != 0U)) ? 1U : 0U;
+}
+
+void DRV8353_UpdateFaultLED(void)
+{
+  if (DRV8353_ReadFaults() != 0U)
+  {
+    Debug_Status1_Set(GPIO_PIN_SET);
+  }
+  else
+  {
+    Debug_Status1_Set(GPIO_PIN_RESET);
+  }
+}
+
+void DRV8353_ConfigureSixPWM(void)
+{
+  uint16_t driver_control;
+
+  driver_control = DRV8353_ReadSPI(DRIVER_CONTROL_REG_ADDR);
+  driver_control |= DRV_CTRL_CLR_FLT;
+  DRV8353_WriteSPI(DRIVER_CONTROL_REG_ADDR, driver_control);
+  HAL_Delay(1);
+
+  driver_control &= (uint16_t)~(DRV_CTRL_PWM_MODE_MASK |
+                                DRV_CTRL_COAST |
+                                DRV_CTRL_BRAKE |
+                                DRV_CTRL_CLR_FLT);
+  driver_control |= DRV_CTRL_PWM_MODE_6X;
+  DRV8353_WriteSPI(DRIVER_CONTROL_REG_ADDR, driver_control);
+  HAL_Delay(1);
+
+  g_drv_driver_control = DRV8353_ReadSPI(DRIVER_CONTROL_REG_ADDR);
 }
 
 static inline void Phase_Disconnected(uint8_t ch)
@@ -482,6 +571,37 @@ static void Set_PWM_DutyTicks(uint16_t duty)
   g_pwm_duty_ticks = Clamp_PWM_Ticks(duty);
 }
 
+static void Debug_Status1_Set(GPIO_PinState state)
+{
+  HAL_GPIO_WritePin(STATUS_1_GPIO_Port, STATUS_1_Pin, state);
+}
+
+static void Debug_Status2_Set(GPIO_PinState state)
+{
+  HAL_GPIO_WritePin(STATUS_2_GPIO_Port, STATUS_2_Pin, state);
+}
+
+static void Debug_Status2_ToggleSlow(void)
+{
+  static uint16_t divider = 0;
+
+  divider++;
+  if (divider >= 1000U)
+  {
+    divider = 0;
+    HAL_GPIO_TogglePin(STATUS_2_GPIO_Port, STATUS_2_Pin);
+  }
+}
+
+static void TIM1_Force_PWM_Outputs_Enabled(void)
+{
+  TIM1->CCER |= (TIM_CCER_CC1E | TIM_CCER_CC1NE |
+                 TIM_CCER_CC2E | TIM_CCER_CC2NE |
+                 TIM_CCER_CC3E | TIM_CCER_CC3NE);
+  TIM1->BDTR |= TIM_BDTR_MOE;
+  TIM1->CR1 |= TIM_CR1_CEN;
+}
+
 void TIM1_Set_EdgeAligned_For_OpenLoopPWM(void)
 {
   __HAL_TIM_DISABLE(&htim1);
@@ -491,6 +611,7 @@ void TIM1_Set_EdgeAligned_For_OpenLoopPWM(void)
   __HAL_TIM_SET_COUNTER(&htim1, 0U);
   TIM1->EGR = TIM_EGR_UG;
   __HAL_TIM_ENABLE(&htim1);
+  TIM1_Force_PWM_Outputs_Enabled();
 }
 
 void TIM1_Set_CenterAligned_For_SVPWM(void)
@@ -506,6 +627,7 @@ void TIM1_Set_CenterAligned_For_SVPWM(void)
   __HAL_TIM_SET_COUNTER(&htim1, 0U);
   TIM1->EGR = TIM_EGR_UG;
   __HAL_TIM_ENABLE(&htim1);
+  TIM1_Force_PWM_Outputs_Enabled();
 }
 
 static void Set_Phase_PWM_Ticks(uint32_t phase_a, uint32_t phase_b, uint32_t phase_c)
@@ -575,6 +697,7 @@ static void Set_OpenLoop_SVPWM(float electrical_angle_rad, float modulation_inde
   Set_Phase_PWM_Ticks((uint32_t)(va * (float)arr),
                       (uint32_t)(vb * (float)arr),
                       (uint32_t)(vc * (float)arr));
+  Debug_Status2_ToggleSlow();
 }
 
 static void CommutateStep(uint8_t step, uint16_t duty)
@@ -788,6 +911,7 @@ void BLDC_OpenLoop_SVPWM_RampLoop(void)
   uint32_t last_tick = HAL_GetTick();
   uint32_t start_tick = last_tick;
   uint32_t last_print_tick = last_tick;
+  uint32_t last_fault_poll_tick = last_tick;
   const float update_period_sec = (float)MOTOR_SVPWM_UPDATE_US / 1000000.0f;
   const uint32_t update_period_cycles = (SystemCoreClock / 1000000U) * MOTOR_SVPWM_UPDATE_US;
 
@@ -795,6 +919,7 @@ void BLDC_OpenLoop_SVPWM_RampLoop(void)
   g_actual_electrical_hz = electrical_hz;
   TIM1_Set_CenterAligned_For_SVPWM();
   Set_OpenLoop_SVPWM(electrical_angle_rad, 0.0f);
+  DRV8353_UpdateFaultLED();
 
   while (1)
   {
@@ -827,6 +952,12 @@ void BLDC_OpenLoop_SVPWM_RampLoop(void)
                                          (TWO_PI_F * electrical_hz * update_period_sec));
 
       Set_OpenLoop_SVPWM(electrical_angle_rad, MOTOR_OPEN_LOOP_MODULATION);
+
+      if ((now_tick - last_fault_poll_tick) >= 100U)
+      {
+        last_fault_poll_tick = now_tick;
+        DRV8353_UpdateFaultLED();
+      }
 
       if ((now_tick - last_print_tick) >= MOTOR_DEBUG_PRINT_MS)
       {
@@ -1056,6 +1187,9 @@ int __io_putchar(int ch)
 
 void Start_PWM(void)
 {
+  Debug_Status1_Set(GPIO_PIN_RESET);
+  Debug_Status2_Set(GPIO_PIN_RESET);
+
   Set_Phase_PWM_Ticks(__HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
                       __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U,
                       __HAL_TIM_GET_AUTORELOAD(&htim1) / 2U);
@@ -1070,6 +1204,8 @@ void Start_PWM(void)
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+
+  TIM1_Force_PWM_Outputs_Enabled();
 }
 
 /* USER CODE END 0 */
@@ -1114,6 +1250,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   DWT_Init();
   HAL_GPIO_WritePin(DRV_ENABLE_GPIO_Port, DRV_ENABLE_Pin, GPIO_PIN_SET);
+  HAL_Delay(10);
+  DRV8353_ConfigureSixPWM();
+  DRV8353_UpdateFaultLED();
 
   Start_PWM();
   Print_Frequency_Info();
@@ -1360,14 +1499,14 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
@@ -1468,7 +1607,7 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 50;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
@@ -1613,6 +1752,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(DRV_ENABLE_GPIO_Port, DRV_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(DRV_SCS_N_GPIO_Port, DRV_SCS_N_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, STATUS_1_Pin|STATUS_2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : DRV_FAULT_Pin */
@@ -1627,6 +1769,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DRV_ENABLE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DRV_SCS_N_Pin */
+  GPIO_InitStruct.Pin = DRV_SCS_N_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(DRV_SCS_N_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : STATUS_1_Pin STATUS_2_Pin */
   GPIO_InitStruct.Pin = STATUS_1_Pin|STATUS_2_Pin;
