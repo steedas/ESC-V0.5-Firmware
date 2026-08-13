@@ -37,6 +37,34 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+typedef struct
+{
+  float ia;
+  float ib;
+  float ic;
+  float ib_sensed;
+  float ib_sensed_corrected;
+  float ic_sensed;
+  float ia_filtered;
+  float ib_filtered;
+  float ic_filtered;
+  float current_sum;
+  uint16_t raw_a;
+  uint16_t raw_b;
+  uint16_t raw_c;
+  uint16_t offset_a;
+  uint16_t offset_b;
+  uint16_t offset_c;
+  float peak_phase_current;
+  uint32_t sample_count;
+  uint8_t valid_a;
+  uint8_t valid_b;
+  uint8_t valid_c;
+  uint8_t saturated_a;
+  uint8_t saturated_b;
+  uint8_t saturated_c;
+} PhaseCurrents_t;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -55,6 +83,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+
+PhaseCurrents_t CurrentSense_GetPhaseCurrents(void);
 
 /* USER CODE END EFP */
 

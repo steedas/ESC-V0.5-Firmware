@@ -123,6 +123,9 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
     /* USER CODE BEGIN ADC1_MspInit 1 */
 
+    HAL_NVIC_SetPriority(ADC1_2_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+
     /* USER CODE END ADC1_MspInit 1 */
 
   }
@@ -153,6 +156,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     HAL_GPIO_DeInit(GPIOC, SOA_Pin|SOB_Pin|SOC_Pin);
 
     /* USER CODE BEGIN ADC1_MspDeInit 1 */
+
+    HAL_NVIC_DisableIRQ(ADC1_2_IRQn);
 
     /* USER CODE END ADC1_MspDeInit 1 */
   }
@@ -364,13 +369,6 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     PC11     ------> SPI3_MISO
     PC12     ------> SPI3_MOSI
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_15;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
     GPIO_InitStruct.Pin = ENC_SPI_CLK_Pin|ENC_SPI_MISO_Pin|ENC_SPI_MOSI_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
