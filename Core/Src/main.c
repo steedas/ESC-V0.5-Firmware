@@ -89,6 +89,9 @@
 #define MOTOR_FIELD_STEP_DEMO_ENABLE 0U
 #define MOTOR_FOC_DEMO_ENABLE        1U
 #define MOTOR_ENCODER_TEST_ENABLE    0U
+#define FOC_POSITION_DEMO_ENABLE     1U
+#define FOC_CURRENT_STEP_TEST_ENABLE 0U
+#define FOC_LOW_SPEED_VELOCITY_TEST_ENABLE 0U
 
 #define AS5048A_CS_Pin             GPIO_PIN_15
 #define AS5048A_CS_GPIO_Port       GPIOA
@@ -131,32 +134,106 @@
 #define FOC_ALIGNMENT_MODULATION          0.030f
 #define FOC_ALIGNMENT_HOLD_MS             1000U
 #define FOC_ALIGNMENT_CURRENT_AVG_SAMPLES   32U
+#define FOC_VERIFIED_ENCODER_DIRECTION         1
 #define FOC_VERIFIED_CURRENT_POLARITY         1
 #define FOC_IQ_TARGET_A                   4.0f
 #define FOC_ID_TARGET_A                   0.0f
 #define FOC_CURRENT_KP                    0.0030f
 #define FOC_CURRENT_KI                    1.0f
-#define FOC_CURRENT_LOOP_DT_S             0.000025f
-#define FOC_TIM1_PERIOD_TICKS              1399U
+#define FOC_CURRENT_LOOP_HZ              20000U
+#define FOC_CURRENT_LOOP_DT_S             (1.0f / (float)FOC_CURRENT_LOOP_HZ)
+#define FOC_TIM1_PERIOD_TICKS              2799U
 #define FOC_SINE_LUT_SIZE                  1024U
 #define FOC_SINE_LUT_MASK                  (FOC_SINE_LUT_SIZE - 1U)
-#define FOC_MAX_MODULATION                0.440f
-#define FOC_HARD_CURRENT_LIMIT_A          48.0f
-#define FOC_OVERCURRENT_CONFIRM_SAMPLES       2U
-#define FOC_MAX_MECHANICAL_RPM           5750.0f
-#define FOC_SPEED_TARGET_RPM              5000.0f
-#define FOC_SPEED_REFERENCE_RAMP_RPM_S     500.0f
-#define FOC_SPEED_KP_A_PER_RPM             0.010f
-#define FOC_SPEED_KI_A_PER_RPM_S           0.100f
+#define FOC_MAX_MODULATION                0.470f
+#define FOC_HARD_CURRENT_LIMIT_A          50.0f
+#define FOC_DQ_FAULT_LIMIT_A              25.0f
+#define FOC_OVERCURRENT_CONFIRM_SAMPLES       1U
+#define FOC_MAX_MECHANICAL_RPM           5200.0f
+#define FOC_SPEED_TARGET_RPM              4800.0f
+#define FOC_SPEED_REFERENCE_RAMP_RPM_S    1500.0f
+#define FOC_SPEED_KP_A_PER_RPM             0.004f
+#define FOC_SPEED_KI_A_PER_RPM_S           0.030f
+#define FOC_LOW_SPEED_TARGET_RPM           10.0f
+#define FOC_LOW_SPEED_KP_A_PER_RPM          0.025f
+#define FOC_LOW_SPEED_KI_A_PER_RPM_S        0.500f
+#define FOC_LOW_SPEED_INTEGRAL_LIMIT_A      9.500f
+#define FOC_LOW_SPEED_IQ_LIMIT_A           10.000f
+#define FOC_LOW_SPEED_OVERSPEED_RPM       100.0f
+#define FOC_LOW_SPEED_TEST_DURATION_MS    1600U
+#define FOC_LOW_SPEED_LOG_INTERVAL_MS       10U
+#define FOC_LOW_SPEED_MIN_CURRENT_SAMPLES  150U
+#define FOC_CURRENT_STEP_TEST_DURATION_MS   100U
+#define FOC_CURRENT_STEP_LOG_INTERVAL_MS      1U
+#define FOC_CURRENT_STEP_MIN_CURRENT_SAMPLES 15U
+#define FOC_CURRENT_STEP_1_START_MS          10U
+#define FOC_CURRENT_STEP_2_START_MS          35U
+#define FOC_CURRENT_STEP_ZERO_START_MS       70U
+#define FOC_CURRENT_STEP_1_A                  1.0f
+#define FOC_CURRENT_STEP_2_A                  2.0f
+#define FOC_CURRENT_STEP_IQ_LIMIT_A           2.0f
+#define FOC_CURRENT_STEP_OVERSPEED_RPM      100.0f
+#define FOC_CURRENT_STEP_HARD_CURRENT_LIMIT_A 20.0f
+#define FOC_CURRENT_STEP_DQ_FAULT_LIMIT_A    15.0f
+#define FOC_POSITION_MAX_SPEED_RPM         100.0f
+#define FOC_POSITION_KP_RPM_PER_DEG         2.0f
+#define FOC_POSITION_SPEED_KP_A_PER_RPM     0.025f
+#define FOC_POSITION_BREAKAWAY_CURRENT_A    2.0f
+#define FOC_POSITION_BREAKAWAY_MAX_MS        50U
+/* Motor-side AS5048A revolutions per output-shaft revolution.  For an
+ * 11:1 reduction, an output move of 360 degrees commands 11 motor turns. */
+#define FOC_MOTOR_TO_OUTPUT_GEAR_RATIO       11.0f
+#define FOC_OUTPUT_DIRECTION_SIGN             1.0f
+/* Position targets, trajectory limits, and outer PD gains are expressed at
+ * the gearbox output. The motor reference is multiplied by the ratio only at
+ * the boundary to the motor-side encoder/current FOC. */
+#define FOC_POSITION_KP_A_PER_OUTPUT_DEG     0.450f
+#define FOC_POSITION_KD_A_PER_OUTPUT_RPM     0.156f
+#define FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM      200.0f
+#define FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S  80.0f
+#define FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S  80.0f
+#define FOC_POSITION_OVERSPEED_RPM          0.0f
+#define FOC_POSITION_IQ_LIMIT_A            10.0f
+#define FOC_POSITION_HARD_CURRENT_LIMIT_A  50.0f
+#define FOC_POSITION_DQ_FAULT_LIMIT_A       25.0f
+#define FOC_OUTPUT_POSITION_TOLERANCE_DEG    3.0f
+#define FOC_OUTPUT_SPEED_TOLERANCE_RPM       3.0f
+#define FOC_POSITION_HOLD_MS              500U
+#define FOC_POSITION_STEP_TIMEOUT_MS      4000U
+#define FOC_POSITION_TEST_DURATION_MS    25000U
 #define FOC_TEST_DURATION_MS             12000U
-#define FOC_ENCODER_UPDATE_US             100U
-#define FOC_ENCODER_SENSOR_DELAY_US        100U
+#define FOC_ENCODER_UPDATE_US             125U
+#define FOC_ENCODER_SENSOR_DELAY_US        200U
 #define FOC_ENCODER_PREDICTION_MAX_US     1200U
+#define FOC_ENCODER_MAX_INNOVATION_RAD    3.141593f
+#define FOC_ENCODER_CORRECTION_GAIN       0.200f
+#define FOC_ENCODER_MAX_CORRECTION_RAD    0.020f
+#define FOC_ENCODER_VELOCITY_GAIN         0.020f
+#define FOC_ENCODER_MAX_VELOCITY_STEP_RAD_S 200.0f
+#define FOC_ENCODER_MAX_CONSECUTIVE_REJECTIONS 10U
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+#define FOC_SPEED_WINDOW_US              20000U
+#define FOC_SPEED_FILTER_ALPHA              0.250f
+#else
 #define FOC_SPEED_WINDOW_US               5000U
+#define FOC_SPEED_FILTER_ALPHA              0.500f
+#endif
 #define FOC_ENCODER_MAX_CONSECUTIVE_ERRORS 10U
 #define FOC_LOG_INTERVAL_MS                60U
+#define FOC_POSITION_LOG_INTERVAL_MS      200U
+#if FOC_CURRENT_STEP_TEST_ENABLE
+#define FOC_LOG_CAPACITY                  105U
+#elif FOC_POSITION_DEMO_ENABLE
+#define FOC_LOG_CAPACITY                  130U
+#elif FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+#define FOC_LOG_CAPACITY                  160U
+#else
 #define FOC_LOG_CAPACITY                  202U
-#define FOC_MIN_CURRENT_SAMPLES_PER_LOG  1500U
+#endif
+#define FOC_MIN_CURRENT_SAMPLES_PER_LOG   900U
+#define FOC_POSITION_MIN_CURRENT_SAMPLES_PER_LOG 3000U
+#define FOC_PREFAULT_CAPTURE_ENABLE         0U
+#define FOC_PREFAULT_LOG_CAPACITY           32U
 #define ENCODER_TEST_INTERVAL_MS           20U
 #define ENCODER_TEST_PRINT_INTERVAL_MS     100U
 #define MOTOR_DEADTIME_100NS_TICKS 11U
@@ -249,9 +326,24 @@ typedef struct
   int32_t id_ma;
   int32_t iq_ma;
   int32_t electrical_angle_mrad;
+  int32_t electrical_velocity_mrad_s;
   int32_t mechanical_rpm_x100;
+  int32_t mechanical_rpm_window_x100;
   int32_t speed_reference_rpm_x100;
+  int32_t speed_error_rpm_x100;
+  int32_t mechanical_position_mdeg;
+  int32_t output_position_mdeg;
+  int32_t trajectory_position_mdeg;
+  int32_t position_error_mdeg;
+  int32_t position_target_mdeg;
+  int32_t encoder_window_counts;
+  int32_t encoder_innovation_mrad;
+  int32_t encoder_correction_mrad;
+  uint32_t encoder_age_us;
+  int32_t id_reference_ma;
   int32_t iq_reference_ma;
+  int32_t speed_integrator_ma;
+  int32_t breakaway_current_ma;
   int32_t vd_x10000;
   int32_t vq_x10000;
   int32_t id_average_ma;
@@ -263,7 +355,36 @@ typedef struct
   uint8_t valid_a;
   uint8_t valid_b;
   uint8_t valid_c;
+  uint8_t iq_saturated;
 } FOC_LogSample;
+
+#if FOC_PREFAULT_CAPTURE_ENABLE
+typedef struct
+{
+  uint32_t sequence;
+  uint16_t raw_a;
+  uint16_t raw_b;
+  uint16_t raw_c;
+  uint16_t ccr_a;
+  uint16_t ccr_b;
+  uint16_t ccr_c;
+  uint16_t ccr_trigger;
+  float ia;
+  float ib;
+  float ib_sensed_corrected;
+  float ic;
+  float id;
+  float iq;
+  float electrical_angle_rad;
+  float encoder_raw_angle_rad;
+  float encoder_innovation_rad;
+  float encoder_correction_rad;
+  float encoder_velocity_rad_s;
+  float vd_previous;
+  float vq_previous;
+  uint8_t valid_mask;
+} FOC_PreFaultSample;
+#endif
 
 static uint8_t prev_high = 0;
 static uint8_t prev_low = 0;
@@ -303,16 +424,44 @@ static volatile float g_foc_vd_modulation = 0.0f;
 static volatile float g_foc_vq_modulation = 0.0f;
 static volatile float g_foc_encoder_observed_angle_rad = 0.0f;
 static volatile float g_foc_electrical_velocity_rad_s = 0.0f;
+#if FOC_PREFAULT_CAPTURE_ENABLE
+static volatile float g_foc_encoder_raw_angle_rad = 0.0f;
+static volatile float g_foc_encoder_innovation_rad = 0.0f;
+static volatile float g_foc_encoder_correction_rad = 0.0f;
+#endif
 static volatile uint32_t g_foc_encoder_observation_cycles = 0U;
 static volatile uint32_t g_foc_encoder_observation_sequence = 0U;
 static float g_foc_id_integrator = 0.0f;
 static float g_foc_iq_integrator = 0.0f;
 static uint16_t g_foc_encoder_zero_count = 0U;
-static int8_t g_foc_encoder_direction = 1;
+static int8_t g_foc_encoder_direction = FOC_VERIFIED_ENCODER_DIRECTION;
 static int8_t g_foc_current_polarity = 1;
 static volatile float g_foc_b_pwm_bias_a = 0.0f;
 static volatile uint8_t g_foc_b_bias_correction_enabled = 0U;
 static volatile float g_foc_speed_reference_rpm = 0.0f;
+static volatile float g_foc_active_hard_current_limit_a =
+    FOC_HARD_CURRENT_LIMIT_A;
+static volatile float g_foc_active_dq_fault_limit_a =
+    FOC_DQ_FAULT_LIMIT_A;
+static int32_t g_foc_mechanical_position_counts = 0;
+static float g_foc_output_position_target_deg = 0.0f;
+static float g_foc_output_trajectory_position_deg = 0.0f;
+static float g_foc_debug_mechanical_rpm_window = 0.0f;
+static float g_foc_debug_speed_error_rpm = 0.0f;
+static float g_foc_debug_position_error_deg = 0.0f;
+static float g_foc_debug_encoder_innovation_rad = 0.0f;
+static float g_foc_debug_encoder_correction_rad = 0.0f;
+static int32_t g_foc_debug_encoder_window_counts = 0;
+static uint8_t g_foc_debug_iq_saturated = 0U;
+static float g_foc_debug_speed_integrator_a = 0.0f;
+static float g_foc_debug_breakaway_current_a = 0.0f;
+#if FOC_POSITION_DEMO_ENABLE
+static const float g_foc_output_position_demo_targets_deg[] =
+{
+  0.0f, 90.0f, 180.0f, 270.0f, 360.0f,
+  270.0f, 180.0f, 90.0f, 0.0f
+};
+#endif
 static volatile float g_foc_telemetry_id_sum = 0.0f;
 static volatile float g_foc_telemetry_iq_sum = 0.0f;
 static volatile float g_foc_telemetry_phase_square_sum = 0.0f;
@@ -333,6 +482,12 @@ static float g_foc_sine_lut[FOC_SINE_LUT_SIZE + 1U];
 static uint8_t g_foc_sine_lut_ready = 0U;
 static FOC_LogSample g_foc_log[FOC_LOG_CAPACITY];
 static uint8_t g_foc_log_count = 0U;
+#if FOC_PREFAULT_CAPTURE_ENABLE
+static FOC_PreFaultSample g_foc_prefault_log[FOC_PREFAULT_LOG_CAPACITY];
+static uint8_t g_foc_prefault_write_index = 0U;
+static uint8_t g_foc_prefault_count = 0U;
+static uint32_t g_foc_prefault_sequence = 0U;
+#endif
 
 /* USER CODE END PV */
 
@@ -382,7 +537,13 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks);
 static void AS5048A_EncoderTestLoop(void);
 static void FOC_LogSampleCapture(uint32_t elapsed_ms, float mechanical_rpm);
 static void FOC_LogDump(void);
+#if FOC_PREFAULT_CAPTURE_ENABLE
+static inline void FOC_PreFaultCapture(const PhaseCurrents_t *currents,
+                                       float id, float iq);
+static void FOC_PreFaultDump(void);
+#endif
 static float WrapRadians(float radians);
+static float WrapSignedRadians(float radians);
 static void FOC_SineLUTInit(void);
 static void FOC_PublishEncoderObservation(float electrical_angle_rad,
                                           float electrical_velocity_rad_s,
@@ -1375,7 +1536,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
   next.offset_b = g_current_offset_adc[1];
   next.offset_c = g_current_offset_adc[2];
   /* This common scale is calculated when the DRV CSA gain is verified, not
-   * inside the 40 kHz interrupt. */
+   * inside the current-control interrupt. */
   next.ia = (float)((int32_t)next.raw_a - (int32_t)next.offset_a) *
             g_current_amps_per_adc_count;
   next.ib_sensed = (float)((int32_t)next.raw_b - (int32_t)next.offset_b) *
@@ -1439,7 +1600,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
     else if (valid_count >= 2U)
     {
       /* Diagnostic-only one-pole filter; the FOC loop has its own interval
-       * telemetry and must not pay for these operations at 40 kHz. */
+       * telemetry and must not pay for these operations in its ISR. */
       next.ia_filtered += CURRENT_DIAGNOSTIC_FILTER_ALPHA * (next.ia - next.ia_filtered);
       next.ib_filtered += CURRENT_DIAGNOSTIC_FILTER_ALPHA * (next.ib - next.ib_filtered);
       next.ic_filtered += CURRENT_DIAGNOSTIC_FILTER_ALPHA * (next.ic - next.ic_filtered);
@@ -1857,6 +2018,21 @@ static float WrapRadians(float radians)
   return radians;
 }
 
+static float WrapSignedRadians(float radians)
+{
+  while (radians > PI_F)
+  {
+    radians -= TWO_PI_F;
+  }
+
+  while (radians < -PI_F)
+  {
+    radians += TWO_PI_F;
+  }
+
+  return radians;
+}
+
 static void FOC_SineLUTInit(void)
 {
   uint32_t index;
@@ -2052,7 +2228,7 @@ static void Set_AlphaBeta_SVPWM(float v_alpha, float v_beta)
                       (uint32_t)(vb * (float)arr),
                       (uint32_t)(vc * (float)arr));
   /* HAL_GetTick() is useful for the slow status LED in open-loop tests, but
-   * it does not belong in the 40 kHz FOC interrupt. */
+   * it does not belong in the FOC interrupt. */
   if (g_foc_enabled == 0U)
   {
     Debug_Status2_ToggleSlow();
@@ -2194,13 +2370,24 @@ static void AS5048A_EncoderTestLoop(void)
   int32_t print_delta_counts = 0;
   uint32_t sample_tick;
   uint32_t print_tick;
+  uint32_t sweep_start_tick = 0U;
   uint32_t read_errors = 0U;
+  uint32_t diagnostic_errors = 0U;
+  uint32_t comp_high_samples = 0U;
+  uint32_t comp_low_samples = 0U;
+  uint32_t cordic_overflow_samples = 0U;
+  uint8_t agc_min = 255U;
+  uint8_t agc_max = 0U;
+  uint16_t magnitude_min = 0x3FFFU;
+  uint16_t magnitude_max = 0U;
+  uint8_t sweep_started = 0U;
 
   Motor_PWM_Off();
   HAL_GPIO_WritePin(DRV_ENABLE_GPIO_Port, DRV_ENABLE_Pin, GPIO_PIN_RESET);
   AS5048A_InitChipSelect();
 
-  printf("AS5048A encoder-only test; DRV disabled and PWM inhibited\r\n");
+  printf("AS5048A magnetic-quality sweep; DRV disabled and PWM inhibited\r\n");
+  printf("Slowly rotate the shaft one complete mechanical revolution in either direction\r\n");
   AS5048A_PrintTest();
 
   if (!AS5048A_ReadAngle(&previous_count))
@@ -2213,12 +2400,12 @@ static void AS5048A_EncoderTestLoop(void)
     }
   }
 
-  printf("CSV_BEGIN\r\n");
-  printf("time_ms,raw_count,angle_deg_x1000,delta_counts,total_counts,total_turns_x1000,rpm_x100,read_errors\r\n");
+  printf("ENCODER_QUALITY_CSV_BEGIN\r\n");
+  printf("time_ms,raw_count,angle_deg_x1000,delta_counts,total_counts,total_turns_x1000,rpm_x100,diag_raw,ocf,cof,comp_low,comp_high,agc,magnitude,read_errors,diagnostic_errors\r\n");
   sample_tick = HAL_GetTick();
   print_tick = sample_tick;
 
-  while (1)
+  while (accumulated_counts < 16384LL && accumulated_counts > -16384LL)
   {
     uint32_t now_tick = HAL_GetTick();
 
@@ -2230,12 +2417,63 @@ static void AS5048A_EncoderTestLoop(void)
       if (AS5048A_ReadAngle(&count))
       {
         int32_t delta = AS5048A_SignedDelta(count, previous_count);
+        uint16_t diagnostic_response = 0U;
+        uint16_t magnitude_response = 0U;
+        uint16_t diagnostic_data = 0U;
+        uint16_t magnitude = 0U;
+        uint8_t diagnostic_ok = 0U;
+        uint8_t ocf = 0U;
+        uint8_t cof = 0U;
+        uint8_t comp_low = 0U;
+        uint8_t comp_high = 0U;
+        uint8_t agc = 0U;
 
         previous_count = count;
-        accumulated_counts += delta;
-        print_delta_counts += delta;
+        if (sweep_started == 0U && delta != 0)
+        {
+          sweep_started = 1U;
+          sweep_start_tick = now_tick;
+          print_tick = now_tick;
+        }
+        if (sweep_started != 0U)
+        {
+          accumulated_counts += delta;
+          print_delta_counts += delta;
+        }
 
-        if ((now_tick - print_tick) >= ENCODER_TEST_PRINT_INTERVAL_MS)
+        if (AS5048A_ReadRegister(AS5048A_REG_DIAGNOSTICS,
+                                 &diagnostic_response) &&
+            AS5048A_ReadRegister(AS5048A_REG_MAGNITUDE,
+                                 &magnitude_response) &&
+            AS5048A_ResponseParityOK(diagnostic_response) &&
+            AS5048A_ResponseParityOK(magnitude_response) &&
+            (diagnostic_response & 0x4000U) == 0U &&
+            (magnitude_response & 0x4000U) == 0U)
+        {
+          diagnostic_data = diagnostic_response & 0x3FFFU;
+          magnitude = magnitude_response & 0x3FFFU;
+          comp_high = (diagnostic_data & (1U << 11)) != 0U;
+          comp_low = (diagnostic_data & (1U << 10)) != 0U;
+          cof = (diagnostic_data & (1U << 9)) != 0U;
+          ocf = (diagnostic_data & (1U << 8)) != 0U;
+          agc = (uint8_t)(diagnostic_data & 0xFFU);
+          diagnostic_ok = 1U;
+
+          if (agc < agc_min) agc_min = agc;
+          if (agc > agc_max) agc_max = agc;
+          if (magnitude < magnitude_min) magnitude_min = magnitude;
+          if (magnitude > magnitude_max) magnitude_max = magnitude;
+          if (comp_high != 0U) comp_high_samples++;
+          if (comp_low != 0U) comp_low_samples++;
+          if (cof != 0U) cordic_overflow_samples++;
+        }
+        else
+        {
+          diagnostic_errors++;
+        }
+
+        if (sweep_started != 0U &&
+            (now_tick - print_tick) >= ENCODER_TEST_PRINT_INTERVAL_MS)
         {
           uint32_t print_elapsed_ms = now_tick - print_tick;
           uint32_t angle_deg_x1000 =
@@ -2246,15 +2484,20 @@ static void AS5048A_EncoderTestLoop(void)
               (int32_t)(((int64_t)print_delta_counts * 6000000LL) /
                         (16384LL * (int64_t)print_elapsed_ms));
 
-          printf("%lu,%u,%lu,%ld,%ld,%ld,%ld,%lu\r\n",
-                 (unsigned long)now_tick,
+          printf("%lu,%u,%lu,%ld,%ld,%ld,%ld,0x%04X,%u,%u,%u,%u,%u,%u,%lu,%lu\r\n",
+                 (unsigned long)(now_tick - sweep_start_tick),
                  count,
                  (unsigned long)angle_deg_x1000,
                  (long)print_delta_counts,
                  (long)accumulated_counts,
                  (long)total_turns_x1000,
                  (long)rpm_x100,
-                 (unsigned long)read_errors);
+                 diagnostic_response,
+                 ocf, cof, comp_low, comp_high,
+                 diagnostic_ok != 0U ? agc : 0U,
+                 diagnostic_ok != 0U ? magnitude : 0U,
+                 (unsigned long)read_errors,
+                 (unsigned long)diagnostic_errors);
           print_tick = now_tick;
           print_delta_counts = 0;
         }
@@ -2268,6 +2511,21 @@ static void AS5048A_EncoderTestLoop(void)
       }
 
     }
+  }
+
+  printf("ENCODER_QUALITY_CSV_END\r\n");
+  printf("ENCODER_QUALITY_SUMMARY duration_ms=%lu total_counts=%ld read_errors=%lu diagnostic_errors=%lu agc_min=%u agc_max=%u magnitude_min=%u magnitude_max=%u comp_low_samples=%lu comp_high_samples=%lu cordic_overflow_samples=%lu\r\n",
+         (unsigned long)(HAL_GetTick() - sweep_start_tick),
+         (long)accumulated_counts,
+         (unsigned long)read_errors,
+         (unsigned long)diagnostic_errors,
+         agc_min, agc_max, magnitude_min, magnitude_max,
+         (unsigned long)comp_low_samples,
+         (unsigned long)comp_high_samples,
+         (unsigned long)cordic_overflow_samples);
+  printf("Encoder sweep complete; DRV remains disabled and PWM inhibited\r\n");
+  while (1)
+  {
   }
 }
 
@@ -2301,6 +2559,98 @@ static void FOC_PublishEncoderObservation(float electrical_angle_rad,
   }
 }
 
+#if FOC_PREFAULT_CAPTURE_ENABLE
+static inline void FOC_PreFaultCapture(const PhaseCurrents_t *currents,
+                                       float id, float iq)
+{
+  FOC_PreFaultSample *sample =
+      &g_foc_prefault_log[g_foc_prefault_write_index];
+
+  sample->sequence = g_foc_prefault_sequence++;
+  sample->raw_a = currents->raw_a;
+  sample->raw_b = currents->raw_b;
+  sample->raw_c = currents->raw_c;
+  sample->ccr_a = (uint16_t)TIM1->CCR1;
+  sample->ccr_b = (uint16_t)TIM1->CCR2;
+  sample->ccr_c = (uint16_t)TIM1->CCR3;
+  sample->ccr_trigger = (uint16_t)TIM1->CCR4;
+  sample->ia = currents->ia;
+  sample->ib = currents->ib;
+  sample->ib_sensed_corrected = currents->ib_sensed_corrected;
+  sample->ic = currents->ic;
+  sample->id = id;
+  sample->iq = iq;
+  sample->electrical_angle_rad = g_foc_electrical_angle_rad;
+  sample->encoder_raw_angle_rad = g_foc_encoder_raw_angle_rad;
+  sample->encoder_innovation_rad = g_foc_encoder_innovation_rad;
+  sample->encoder_correction_rad = g_foc_encoder_correction_rad;
+  sample->encoder_velocity_rad_s = g_foc_electrical_velocity_rad_s;
+  /* These are the modulation commands that produced the sampled PWM cycle. */
+  sample->vd_previous = g_foc_vd_modulation;
+  sample->vq_previous = g_foc_vq_modulation;
+  sample->valid_mask =
+      (currents->valid_a != 0U ? 1U : 0U) |
+      (currents->valid_b != 0U ? 2U : 0U) |
+      (currents->valid_c != 0U ? 4U : 0U);
+
+  g_foc_prefault_write_index++;
+  if (g_foc_prefault_write_index >= FOC_PREFAULT_LOG_CAPACITY)
+  {
+    g_foc_prefault_write_index = 0U;
+  }
+  if (g_foc_prefault_count < FOC_PREFAULT_LOG_CAPACITY)
+  {
+    g_foc_prefault_count++;
+  }
+}
+
+static void FOC_PreFaultDump(void)
+{
+  uint8_t index;
+  uint8_t remaining;
+
+  if (g_foc_prefault_count == 0U)
+  {
+    return;
+  }
+
+  index = (g_foc_prefault_count < FOC_PREFAULT_LOG_CAPACITY) ? 0U :
+          g_foc_prefault_write_index;
+  remaining = g_foc_prefault_count;
+  printf("FOC_PREFAULT_CSV_BEGIN\r\n");
+  printf("sequence,raw_a,raw_b,raw_c,ia_mA,ib_control_mA,ib_sensed_corrected_mA,ic_mA,id_mA,iq_mA,electrical_angle_mrad,encoder_raw_angle_mrad,encoder_innovation_mrad,encoder_correction_mrad,encoder_velocity_rad_s,ccr_a,ccr_b,ccr_c,ccr_trigger,vd_previous_x10000,vq_previous_x10000,valid_mask\r\n");
+  while (remaining-- != 0U)
+  {
+    const FOC_PreFaultSample *sample = &g_foc_prefault_log[index];
+    printf("%lu,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%u,%u,%u,%u,%ld,%ld,0x%X\r\n",
+           (unsigned long)sample->sequence,
+           sample->raw_a, sample->raw_b, sample->raw_c,
+           (long)(sample->ia * 1000.0f),
+           (long)(sample->ib * 1000.0f),
+           (long)(sample->ib_sensed_corrected * 1000.0f),
+           (long)(sample->ic * 1000.0f),
+           (long)(sample->id * 1000.0f),
+           (long)(sample->iq * 1000.0f),
+           (long)(sample->electrical_angle_rad * 1000.0f),
+           (long)(sample->encoder_raw_angle_rad * 1000.0f),
+           (long)(sample->encoder_innovation_rad * 1000.0f),
+           (long)(sample->encoder_correction_rad * 1000.0f),
+           (long)sample->encoder_velocity_rad_s,
+           sample->ccr_a, sample->ccr_b, sample->ccr_c,
+           sample->ccr_trigger,
+           (long)(sample->vd_previous * 10000.0f),
+           (long)(sample->vq_previous * 10000.0f),
+           sample->valid_mask);
+    index++;
+    if (index >= FOC_PREFAULT_LOG_CAPACITY)
+    {
+      index = 0U;
+    }
+  }
+  printf("FOC_PREFAULT_CSV_END\r\n");
+}
+#endif
+
 static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
 {
   uint32_t observation_sequence;
@@ -2315,6 +2665,8 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
   float iq;
   float id_error;
   float iq_error;
+  float vd_unsaturated;
+  float vq_unsaturated;
   float vd;
   float vq;
   float magnitude;
@@ -2326,14 +2678,20 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
   {
     /* The published timestamp is when the delayed sensor sample represents
      * the shaft, not when the SPI read completed. Recompute from that fixed
-     * observation on every 40 kHz iteration so SPI timing cannot create an
+     * observation on every current-loop iteration so SPI timing cannot create an
      * angle staircase or cumulative integration drift. */
     prediction_age_cycles = DWT->CYCCNT - g_foc_encoder_observation_cycles;
     prediction_max_cycles =
         (SystemCoreClock / 1000000U) * FOC_ENCODER_PREDICTION_MAX_US;
     if (prediction_age_cycles > prediction_max_cycles)
     {
-      prediction_age_cycles = prediction_max_cycles;
+      /* A frozen electrical angle is much more dangerous than coasting.  At
+       * high speed it rotates the commanded voltage away from q-axis and can
+       * create a large real phase-current surge within a few PWM periods. */
+      g_foc_fault = 8U;
+      g_foc_enabled = 0U;
+      Motor_PWM_Off();
+      return;
     }
     g_foc_electrical_angle_rad =
         WrapRadians(g_foc_encoder_observed_angle_rad +
@@ -2362,6 +2720,44 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
     return;
   }
 
+  FOC_FastSinCos(g_foc_electrical_angle_rad, &sin_theta, &cos_theta);
+
+  /* Amplitude-invariant Clarke and Park transforms. */
+  i_alpha = (float)g_foc_current_polarity * currents->ia;
+  i_beta = (float)g_foc_current_polarity *
+           (currents->ia + (2.0f * currents->ib)) * (1.0f / SQRT3_F);
+  id = (i_alpha * cos_theta) + (i_beta * sin_theta);
+  iq = (-i_alpha * sin_theta) + (i_beta * cos_theta);
+
+#if FOC_PREFAULT_CAPTURE_ENABLE
+  /* Optional high-rate diagnostic. Keep it out of normal runs so the encoder
+   * foreground task receives as much CPU time as possible. */
+  FOC_PreFaultCapture(currents, id, iq);
+#endif
+
+  /* A large d/q vector is already an abnormal control condition. Stop well
+   * before it can reach the separate active-mode phase hard limit. */
+  if (AbsFloat(id) > g_foc_active_dq_fault_limit_a ||
+      AbsFloat(iq) > g_foc_active_dq_fault_limit_a)
+  {
+    g_foc_fault_max_current_a =
+        (AbsFloat(id) > AbsFloat(iq)) ? AbsFloat(id) : AbsFloat(iq);
+    g_foc_fault_ia_a = currents->ia;
+    g_foc_fault_ib_a = currents->ib;
+    g_foc_fault_ic_a = currents->ic;
+    g_foc_fault_id_a = id;
+    g_foc_fault_iq_a = iq;
+    g_foc_fault_electrical_angle_rad = g_foc_electrical_angle_rad;
+    g_foc_fault_valid_mask =
+        (currents->valid_a != 0U ? 1U : 0U) |
+        (currents->valid_b != 0U ? 2U : 0U) |
+        (currents->valid_c != 0U ? 4U : 0U);
+    g_foc_fault = 9U;
+    g_foc_enabled = 0U;
+    Motor_PWM_Off();
+    return;
+  }
+
   max_abs_current = AbsFloat(currents->ia);
   if (AbsFloat(currents->ib) > max_abs_current)
   {
@@ -2371,21 +2767,17 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
   {
     max_abs_current = AbsFloat(currents->ic);
   }
-  if (currents->valid_b != 0U)
+  if (currents->valid_b != 0U &&
+      AbsFloat(currents->ib_sensed) > max_abs_current)
   {
-    if (AbsFloat(currents->ib_sensed) > max_abs_current)
-    {
-      max_abs_current = AbsFloat(currents->ib_sensed);
-    }
+    max_abs_current = AbsFloat(currents->ib_sensed);
   }
-  if (currents->valid_c != 0U)
+  if (currents->valid_c != 0U &&
+      AbsFloat(currents->ic_sensed) > max_abs_current)
   {
-    if (AbsFloat(currents->ic_sensed) > max_abs_current)
-    {
-      max_abs_current = AbsFloat(currents->ic_sensed);
-    }
+    max_abs_current = AbsFloat(currents->ic_sensed);
   }
-  if (max_abs_current > FOC_HARD_CURRENT_LIMIT_A)
+  if (max_abs_current > g_foc_active_hard_current_limit_a)
   {
     if (g_foc_overcurrent_sample_count < 255U)
     {
@@ -2397,8 +2789,8 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
       g_foc_fault_ia_a = currents->ia;
       g_foc_fault_ib_a = currents->ib;
       g_foc_fault_ic_a = currents->ic;
-      g_foc_fault_id_a = g_foc_id_a;
-      g_foc_fault_iq_a = g_foc_iq_a;
+      g_foc_fault_id_a = id;
+      g_foc_fault_iq_a = iq;
       g_foc_fault_electrical_angle_rad = g_foc_electrical_angle_rad;
       g_foc_fault_valid_mask =
           (currents->valid_a != 0U ? 1U : 0U) |
@@ -2415,15 +2807,6 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
     g_foc_overcurrent_sample_count = 0U;
   }
 
-  FOC_FastSinCos(g_foc_electrical_angle_rad, &sin_theta, &cos_theta);
-
-  /* Amplitude-invariant Clarke and Park transforms. */
-  i_alpha = (float)g_foc_current_polarity * currents->ia;
-  i_beta = (float)g_foc_current_polarity *
-           (currents->ia + (2.0f * currents->ib)) * (1.0f / SQRT3_F);
-  id = (i_alpha * cos_theta) + (i_beta * sin_theta);
-  iq = (-i_alpha * sin_theta) + (i_beta * cos_theta);
-
   id_error = g_foc_id_reference_a - id;
   iq_error = g_foc_iq_reference_a - iq;
   g_foc_id_integrator = ClampFloat(g_foc_id_integrator +
@@ -2432,8 +2815,10 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
   g_foc_iq_integrator = ClampFloat(g_foc_iq_integrator +
                                     (FOC_CURRENT_KI * FOC_CURRENT_LOOP_DT_S * iq_error),
                                     -FOC_MAX_MODULATION, FOC_MAX_MODULATION);
-  vd = (FOC_CURRENT_KP * id_error) + g_foc_id_integrator;
-  vq = (FOC_CURRENT_KP * iq_error) + g_foc_iq_integrator;
+  vd_unsaturated = (FOC_CURRENT_KP * id_error) + g_foc_id_integrator;
+  vq_unsaturated = (FOC_CURRENT_KP * iq_error) + g_foc_iq_integrator;
+  vd = vd_unsaturated;
+  vq = vq_unsaturated;
 
   magnitude_squared = (vd * vd) + (vq * vq);
   if (magnitude_squared > (FOC_MAX_MODULATION * FOC_MAX_MODULATION))
@@ -2442,6 +2827,16 @@ static void FOC_CurrentLoopISR(const PhaseCurrents_t *currents)
     float scale = FOC_MAX_MODULATION / magnitude;
     vd *= scale;
     vq *= scale;
+
+    /* Track the voltage vector that SVPWM can actually apply. Without this
+     * back-calculation, the independent D/Q integrators can remain wound up
+     * outside the circular modulation limit and drive a large Id transient. */
+    g_foc_id_integrator = ClampFloat(
+        g_foc_id_integrator + (vd - vd_unsaturated),
+        -FOC_MAX_MODULATION, FOC_MAX_MODULATION);
+    g_foc_iq_integrator = ClampFloat(
+        g_foc_iq_integrator + (vq - vq_unsaturated),
+        -FOC_MAX_MODULATION, FOC_MAX_MODULATION);
   }
 
   g_foc_id_a = id;
@@ -2564,10 +2959,43 @@ static void FOC_LogSampleCapture(uint32_t elapsed_ms, float mechanical_rpm)
   sample->iq_ma = (int32_t)(g_foc_iq_a * 1000.0f);
   sample->electrical_angle_mrad =
       (int32_t)(g_foc_electrical_angle_rad * 1000.0f);
+  sample->electrical_velocity_mrad_s =
+      (int32_t)(g_foc_electrical_velocity_rad_s * 1000.0f);
   sample->mechanical_rpm_x100 = (int32_t)(mechanical_rpm * 100.0f);
+  sample->mechanical_rpm_window_x100 =
+      (int32_t)(g_foc_debug_mechanical_rpm_window * 100.0f);
   sample->speed_reference_rpm_x100 =
       (int32_t)(g_foc_speed_reference_rpm * 100.0f);
+  sample->speed_error_rpm_x100 =
+      (int32_t)(g_foc_debug_speed_error_rpm * 100.0f);
+  sample->mechanical_position_mdeg =
+      (int32_t)(((int64_t)g_foc_mechanical_position_counts * 360000LL) /
+                16384LL);
+  sample->output_position_mdeg =
+      (int32_t)((((float)g_foc_mechanical_position_counts * 360000.0f) /
+                 16384.0f) * FOC_OUTPUT_DIRECTION_SIGN /
+                FOC_MOTOR_TO_OUTPUT_GEAR_RATIO);
+  sample->trajectory_position_mdeg =
+      (int32_t)(g_foc_output_trajectory_position_deg * 1000.0f);
+  sample->position_error_mdeg =
+      (int32_t)(g_foc_debug_position_error_deg * 1000.0f);
+  sample->position_target_mdeg =
+      (int32_t)(g_foc_output_position_target_deg * 1000.0f);
+  sample->encoder_window_counts = g_foc_debug_encoder_window_counts;
+  sample->encoder_innovation_mrad =
+      (int32_t)(g_foc_debug_encoder_innovation_rad * 1000.0f);
+  sample->encoder_correction_mrad =
+      (int32_t)(g_foc_debug_encoder_correction_rad * 1000.0f);
+  sample->encoder_age_us =
+      (uint32_t)(((uint64_t)(DWT->CYCCNT -
+                             g_foc_encoder_observation_cycles) * 1000000ULL) /
+                 (uint64_t)SystemCoreClock);
+  sample->id_reference_ma = (int32_t)(g_foc_id_reference_a * 1000.0f);
   sample->iq_reference_ma = (int32_t)(g_foc_iq_reference_a * 1000.0f);
+  sample->speed_integrator_ma =
+      (int32_t)(g_foc_debug_speed_integrator_a * 1000.0f);
+  sample->breakaway_current_ma =
+      (int32_t)(g_foc_debug_breakaway_current_a * 1000.0f);
   sample->vd_x10000 = (int32_t)(g_foc_vd_modulation * 10000.0f);
   sample->vq_x10000 = (int32_t)(g_foc_vq_modulation * 10000.0f);
   if (telemetry_count != 0U)
@@ -2593,6 +3021,7 @@ static void FOC_LogSampleCapture(uint32_t elapsed_ms, float mechanical_rpm)
   sample->valid_a = currents.valid_a;
   sample->valid_b = currents.valid_b;
   sample->valid_c = currents.valid_c;
+  sample->iq_saturated = g_foc_debug_iq_saturated;
 }
 
 static void FOC_LogDump(void)
@@ -2600,12 +3029,12 @@ static void FOC_LogDump(void)
   uint8_t i;
 
   printf("FOC_CSV_BEGIN\r\n");
-  printf("time_ms,raw_a,raw_b,raw_c,ia_mA,ib_control_mA,ib_sensed_raw_mA,ib_sensed_corrected_mA,ic_mA,reconstructed_sum_mA,sensed_sum_mA,valid_a,valid_b,valid_c,id_mA,iq_mA,electrical_angle_mrad,mechanical_rpm_x100,speed_reference_rpm_x100,iq_reference_mA,vd_x10000,vq_x10000,id_average_mA,iq_average_mA,phase_rms_mA,phase_peak_mA,current_samples,current_isr_max_cycles\r\n");
+  printf("time_ms,raw_a,raw_b,raw_c,ia_mA,ib_control_mA,ib_sensed_raw_mA,ib_sensed_corrected_mA,ic_mA,reconstructed_sum_mA,sensed_sum_mA,valid_a,valid_b,valid_c,id_mA,iq_mA,electrical_angle_mrad,electrical_velocity_mrad_s,motor_rpm_filtered_x100,motor_rpm_window_x100,motor_speed_reference_rpm_x100,motor_speed_error_rpm_x100,motor_position_mdeg,output_position_mdeg,output_trajectory_position_mdeg,output_trajectory_error_mdeg,output_position_target_mdeg,encoder_window_counts,encoder_innovation_mrad,encoder_correction_mrad,encoder_age_us,id_reference_mA,iq_reference_mA,outer_integrator_mA,breakaway_current_mA,iq_saturated,vd_x10000,vq_x10000,id_average_mA,iq_average_mA,phase_rms_mA,phase_peak_mA,current_samples,current_isr_max_cycles\r\n");
   for (i = 0U; i < g_foc_log_count; ++i)
   {
     const FOC_LogSample *sample = &g_foc_log[i];
 
-    printf("%u,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%lu,%lu\r\n",
+    printf("%u,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%lu,%ld,%ld,%ld,%ld,%u,%ld,%ld,%ld,%ld,%ld,%ld,%lu,%lu\r\n",
            sample->time_ms,
            sample->raw_a, sample->raw_b, sample->raw_c,
            (long)sample->ia_ma, (long)sample->ib_ma,
@@ -2616,9 +3045,25 @@ static void FOC_LogDump(void)
            sample->valid_a, sample->valid_b, sample->valid_c,
            (long)sample->id_ma, (long)sample->iq_ma,
            (long)sample->electrical_angle_mrad,
+           (long)sample->electrical_velocity_mrad_s,
            (long)sample->mechanical_rpm_x100,
+           (long)sample->mechanical_rpm_window_x100,
            (long)sample->speed_reference_rpm_x100,
+           (long)sample->speed_error_rpm_x100,
+           (long)sample->mechanical_position_mdeg,
+           (long)sample->output_position_mdeg,
+           (long)sample->trajectory_position_mdeg,
+           (long)sample->position_error_mdeg,
+           (long)sample->position_target_mdeg,
+           (long)sample->encoder_window_counts,
+           (long)sample->encoder_innovation_mrad,
+           (long)sample->encoder_correction_mrad,
+           (unsigned long)sample->encoder_age_us,
+           (long)sample->id_reference_ma,
            (long)sample->iq_reference_ma,
+           (long)sample->speed_integrator_ma,
+           (long)sample->breakaway_current_ma,
+           sample->iq_saturated,
            (long)sample->vd_x10000, (long)sample->vq_x10000,
            (long)sample->id_average_ma, (long)sample->iq_average_ma,
            (long)sample->phase_rms_ma, (long)sample->phase_peak_ma,
@@ -2641,11 +3086,63 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   uint32_t last_log_tick;
   uint32_t encoder_update_cycles;
   uint32_t speed_window_cycles;
+  uint32_t encoder_duplicate_samples = 0U;
+  uint32_t encoder_rejected_samples = 0U;
+  uint32_t encoder_limited_corrections = 0U;
+  uint32_t encoder_service_count = 0U;
+  uint32_t encoder_max_service_interval_cycles = 0U;
+  uint32_t encoder_consecutive_rejections = 0U;
+  float encoder_max_rejected_innovation_rad = 0.0f;
   int32_t speed_window_counts = 0;
   uint8_t encoder_errors = 0U;
   float mechanical_rpm_filtered = 0.0f;
   float mechanical_rpm_window = 0.0f;
+  float foc_iq_limit_a = FOC_IQ_TARGET_A;
+#if FOC_POSITION_DEMO_ENABLE
+  const uint32_t foc_test_duration_ms = FOC_POSITION_TEST_DURATION_MS;
+  const uint32_t foc_log_interval_ms = FOC_POSITION_LOG_INTERVAL_MS;
+  const uint32_t foc_min_current_samples_per_log =
+      FOC_POSITION_MIN_CURRENT_SAMPLES_PER_LOG;
+  const float foc_overspeed_rpm = FOC_POSITION_OVERSPEED_RPM;
+  uint32_t position_hold_start_tick = 0U;
+  uint32_t position_step_start_tick = 0U;
+  float output_trajectory_speed_rpm = 0.0f;
+  uint8_t position_target_index = 0U;
+  uint8_t position_demo_completed = 0U;
+  const uint8_t position_target_count =
+      (uint8_t)(sizeof(g_foc_output_position_demo_targets_deg) /
+                sizeof(g_foc_output_position_demo_targets_deg[0]));
+#elif FOC_CURRENT_STEP_TEST_ENABLE
+  const uint32_t foc_test_duration_ms = FOC_CURRENT_STEP_TEST_DURATION_MS;
+  const uint32_t foc_log_interval_ms = FOC_CURRENT_STEP_LOG_INTERVAL_MS;
+  const uint32_t foc_min_current_samples_per_log =
+      FOC_CURRENT_STEP_MIN_CURRENT_SAMPLES;
+  const float foc_overspeed_rpm = FOC_CURRENT_STEP_OVERSPEED_RPM;
+#else
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+  const uint32_t foc_test_duration_ms = FOC_LOW_SPEED_TEST_DURATION_MS;
+  const uint32_t foc_log_interval_ms = FOC_LOW_SPEED_LOG_INTERVAL_MS;
+  const uint32_t foc_min_current_samples_per_log =
+      FOC_LOW_SPEED_MIN_CURRENT_SAMPLES;
+  const float foc_overspeed_rpm = FOC_LOW_SPEED_OVERSPEED_RPM;
+  const float foc_speed_target_rpm = FOC_LOW_SPEED_TARGET_RPM;
+  const float foc_speed_kp_a_per_rpm = FOC_LOW_SPEED_KP_A_PER_RPM;
+  const float foc_speed_ki_a_per_rpm_s = FOC_LOW_SPEED_KI_A_PER_RPM_S;
+  const float foc_speed_integral_limit_a =
+      FOC_LOW_SPEED_INTEGRAL_LIMIT_A;
+#else
+  const uint32_t foc_test_duration_ms = FOC_TEST_DURATION_MS;
+  const uint32_t foc_log_interval_ms = FOC_LOG_INTERVAL_MS;
+  const uint32_t foc_min_current_samples_per_log =
+      FOC_MIN_CURRENT_SAMPLES_PER_LOG;
+  const float foc_overspeed_rpm = FOC_MAX_MECHANICAL_RPM;
+  const float foc_speed_target_rpm = FOC_SPEED_TARGET_RPM;
+  const float foc_speed_kp_a_per_rpm = FOC_SPEED_KP_A_PER_RPM;
+  const float foc_speed_ki_a_per_rpm_s = FOC_SPEED_KI_A_PER_RPM_S;
+  const float foc_speed_integral_limit_a = FOC_IQ_TARGET_A;
+#endif
   float speed_integrator_a = 0.0f;
+#endif
   int32_t direction_delta;
 
   g_foc_enabled = 0U;
@@ -2690,8 +3187,16 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
            (unsigned long)(16384U / (4U * MOTOR_POLE_PAIRS)));
     goto foc_stop;
   }
-  g_foc_encoder_direction = (direction_delta > 0) ? 1 : -1;
-  printf("FOC encoder direction=%s, +90 electrical moved %ld counts\r\n",
+  if ((FOC_VERIFIED_ENCODER_DIRECTION > 0 && direction_delta < 0) ||
+      (FOC_VERIFIED_ENCODER_DIRECTION < 0 && direction_delta > 0))
+  {
+    printf("FOC startup failed: direction test moved %ld counts, opposite verified encoder direction %s\r\n",
+           (long)direction_delta,
+           (FOC_VERIFIED_ENCODER_DIRECTION > 0) ? "+1" : "-1");
+    goto foc_stop;
+  }
+  g_foc_encoder_direction = FOC_VERIFIED_ENCODER_DIRECTION;
+  printf("FOC encoder direction=%s (verified), +90 electrical moved %ld counts\r\n",
          (g_foc_encoder_direction > 0) ? "+1" : "-1",
          (long)direction_delta);
 
@@ -2775,6 +3280,11 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_electrical_angle_rad = 0.0f;
   g_foc_encoder_observed_angle_rad = 0.0f;
   g_foc_electrical_velocity_rad_s = 0.0f;
+#if FOC_PREFAULT_CAPTURE_ENABLE
+  g_foc_encoder_raw_angle_rad = 0.0f;
+  g_foc_encoder_innovation_rad = 0.0f;
+  g_foc_encoder_correction_rad = 0.0f;
+#endif
   g_foc_encoder_observation_cycles = DWT->CYCCNT;
   g_foc_encoder_observation_sequence = 0U;
   g_foc_id_integrator = 0.0f;
@@ -2782,6 +3292,40 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_id_reference_a = FOC_ID_TARGET_A;
   g_foc_iq_reference_a = 0.0f;
   g_foc_speed_reference_rpm = 0.0f;
+  g_foc_mechanical_position_counts = 0;
+  g_foc_output_trajectory_position_deg = 0.0f;
+  g_foc_debug_mechanical_rpm_window = 0.0f;
+  g_foc_debug_speed_error_rpm = 0.0f;
+  g_foc_debug_position_error_deg = 0.0f;
+  g_foc_debug_encoder_innovation_rad = 0.0f;
+  g_foc_debug_encoder_correction_rad = 0.0f;
+  g_foc_debug_encoder_window_counts = 0;
+  g_foc_debug_iq_saturated = 0U;
+  g_foc_debug_speed_integrator_a = 0.0f;
+  g_foc_debug_breakaway_current_a = 0.0f;
+#if FOC_POSITION_DEMO_ENABLE
+  g_foc_output_position_target_deg =
+      g_foc_output_position_demo_targets_deg[0];
+  foc_iq_limit_a = FOC_POSITION_IQ_LIMIT_A;
+  g_foc_active_hard_current_limit_a = FOC_POSITION_HARD_CURRENT_LIMIT_A;
+  g_foc_active_dq_fault_limit_a = FOC_POSITION_DQ_FAULT_LIMIT_A;
+#elif FOC_CURRENT_STEP_TEST_ENABLE
+  g_foc_output_position_target_deg = 0.0f;
+  foc_iq_limit_a = FOC_CURRENT_STEP_IQ_LIMIT_A;
+  g_foc_active_hard_current_limit_a =
+      FOC_CURRENT_STEP_HARD_CURRENT_LIMIT_A;
+  g_foc_active_dq_fault_limit_a = FOC_CURRENT_STEP_DQ_FAULT_LIMIT_A;
+#else
+  g_foc_output_position_target_deg = 0.0f;
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+  foc_iq_limit_a = FOC_LOW_SPEED_IQ_LIMIT_A;
+  g_foc_active_hard_current_limit_a = FOC_POSITION_HARD_CURRENT_LIMIT_A;
+  g_foc_active_dq_fault_limit_a = FOC_POSITION_DQ_FAULT_LIMIT_A;
+#else
+  g_foc_active_hard_current_limit_a = FOC_HARD_CURRENT_LIMIT_A;
+  g_foc_active_dq_fault_limit_a = FOC_DQ_FAULT_LIMIT_A;
+#endif
+#endif
   g_foc_telemetry_id_sum = 0.0f;
   g_foc_telemetry_iq_sum = 0.0f;
   g_foc_telemetry_phase_square_sum = 0.0f;
@@ -2797,19 +3341,100 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_fault_iq_a = 0.0f;
   g_foc_fault_electrical_angle_rad = 0.0f;
   g_foc_fault_valid_mask = 0U;
+#if FOC_PREFAULT_CAPTURE_ENABLE
+  g_foc_prefault_write_index = 0U;
+  g_foc_prefault_count = 0U;
+  g_foc_prefault_sequence = 0U;
+#endif
   previous_angle = angle_zero_final;
   g_foc_log_count = 0U;
 
   /* Finish blocking 9600-baud UART output before enabling current control. */
-  printf("FOC speed-loop trial: target=%ld rpm, Iq_limit=%ld mA, max modulation=%ld/10000\r\n",
+#if FOC_POSITION_DEMO_ENABLE
+  printf("FOC profiled output-position-to-Iq PD demo: %u targets, no integral or breakaway pulse\r\n",
+         (unsigned int)position_target_count);
+  printf("FOC gearbox=%ld/1000 motor rev/output rev; output 360 deg requires %ld/1000 motor turns\r\n",
+         (long)(FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000.0f),
+         (long)(FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000.0f));
+  printf("FOC output position is inferred from the motor encoder; gearbox backlash is not measured\r\n");
+  printf("FOC output targets relative to aligned zero: 0,90,180,270,360,270,180,90,0 deg\r\n");
+  printf("FOC output max=%ld x0.001 rpm, accel/decel=%ld/%ld x0.001 rpm/s; motor max=%ld rpm, accel/decel=%ld/%ld rpm/s\r\n",
+         (long)(FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S * 1000.0f),
+         (long)(FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S * 1000.0f),
+         (long)((FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f),
+         (long)((FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f),
+         (long)((FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f));
+  printf("FOC duration=%lu ms, step timeout=%lu ms, CSV interval=%lu ms\r\n",
+         (unsigned long)foc_test_duration_ms,
+         (unsigned long)FOC_POSITION_STEP_TIMEOUT_MS,
+         (unsigned long)foc_log_interval_ms);
+  printf("FOC output-frame PD: P=%ld/1000 A/output-deg, D=%ld/1000 A/output-rpm; output tolerance=%ld mdeg, hold=%lu ms, Iq_limit=%ld mA\r\n",
+         (long)(FOC_POSITION_KP_A_PER_OUTPUT_DEG * 1000.0f),
+         (long)(FOC_POSITION_KD_A_PER_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_OUTPUT_POSITION_TOLERANCE_DEG * 1000.0f),
+         (unsigned long)FOC_POSITION_HOLD_MS,
+         (long)(foc_iq_limit_a * 1000.0f));
+#elif FOC_CURRENT_STEP_TEST_ENABLE
+  printf("FOC d-axis current-step diagnostic: duration=%lu ms, CSV interval=%lu ms\r\n",
+         (unsigned long)foc_test_duration_ms,
+         (unsigned long)foc_log_interval_ms);
+  printf("FOC Id sequence: 0 A, +%ld mA at %lu ms, +%ld mA at %lu ms, 0 A at %lu ms; Iq held at 0 mA\r\n",
+         (long)(FOC_CURRENT_STEP_1_A * 1000.0f),
+         (unsigned long)FOC_CURRENT_STEP_1_START_MS,
+         (long)(FOC_CURRENT_STEP_2_A * 1000.0f),
+         (unsigned long)FOC_CURRENT_STEP_2_START_MS,
+         (unsigned long)FOC_CURRENT_STEP_ZERO_START_MS);
+  printf("FOC diagnostic protections: phase=%ld mA, d/q=%ld mA, overspeed=%ld rpm, reserved Iq authority=%ld mA\r\n",
+         (long)(g_foc_active_hard_current_limit_a * 1000.0f),
+         (long)(g_foc_active_dq_fault_limit_a * 1000.0f),
+         (long)foc_overspeed_rpm,
+         (long)(foc_iq_limit_a * 1000.0f));
+#else
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+  printf("FOC standalone low-speed velocity PI test: target=%ld rpm, duration=%lu ms, CSV interval=%lu ms\r\n",
+         (long)foc_speed_target_rpm,
+         (unsigned long)foc_test_duration_ms,
+         (unsigned long)foc_log_interval_ms);
+  printf("FOC velocity PI: Kp=%ld/1000 A/rpm, Ki=%ld/1000 A/(rpm*s), integral_limit=%ld mA, Iq_limit=%ld mA\r\n",
+         (long)(foc_speed_kp_a_per_rpm * 1000.0f),
+         (long)(foc_speed_ki_a_per_rpm_s * 1000.0f),
+         (long)(foc_speed_integral_limit_a * 1000.0f),
+         (long)(foc_iq_limit_a * 1000.0f));
+#else
+  printf("FOC speed-loop trial: target=%ld rpm, ramp=%ld rpm/s, Iq_limit=%ld mA, max modulation=%ld/10000\r\n",
          (long)FOC_SPEED_TARGET_RPM,
+         (long)FOC_SPEED_REFERENCE_RAMP_RPM_S,
          (long)(FOC_IQ_TARGET_A * 1000.0f),
          (long)(FOC_MAX_MODULATION * 10000.0f));
-  printf("FOC encoder timing: 10000 Hz reads, %lu us sensor-delay prediction, SPI=%lu Hz\r\n",
+#endif
+#endif
+  printf("FOC encoder timing: %lu Hz reads, %lu us effective sensor age, SPI=%lu Hz\r\n",
+         (unsigned long)(1000000U / FOC_ENCODER_UPDATE_US),
          (unsigned long)FOC_ENCODER_SENSOR_DELAY_US,
          (unsigned long)(HAL_RCC_GetPCLK1Freq() / 16U));
 
+  /* HAL_GetTick() has 1 ms resolution. Starting just before its boundary can
+   * make the first nominal 1 ms telemetry bucket only a few microseconds
+   * long, falsely reporting that the 20 kHz current ISR did not run. Begin
+   * immediately after a fresh tick so the first bucket has a full interval. */
+#if FOC_CURRENT_STEP_TEST_ENABLE
+  {
+    uint32_t tick_before_sync = HAL_GetTick();
+
+    while (HAL_GetTick() == tick_before_sync)
+    {
+      /* PWM/current control is still disabled during this bounded wait. */
+    }
+  }
+#endif
   start_tick = HAL_GetTick();
+#if FOC_POSITION_DEMO_ENABLE
+  position_step_start_tick = start_tick;
+#endif
   last_encoder_cycles = DWT->CYCCNT;
   last_encoder_observation_cycles =
       last_encoder_cycles -
@@ -2823,17 +3448,52 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_seconds_per_core_cycle = 1.0f / (float)SystemCoreClock;
   g_foc_enabled = 1U;
 
-  while ((HAL_GetTick() - start_tick) < FOC_TEST_DURATION_MS &&
+  while ((HAL_GetTick() - start_tick) < foc_test_duration_ms &&
          g_foc_enabled != 0U)
   {
     uint32_t now_tick = HAL_GetTick();
     uint32_t now_cycles = DWT->CYCCNT;
 
+#if FOC_CURRENT_STEP_TEST_ENABLE
+    {
+      uint32_t current_step_elapsed_ms = now_tick - start_tick;
+
+      if (current_step_elapsed_ms < FOC_CURRENT_STEP_1_START_MS)
+      {
+        g_foc_id_reference_a = 0.0f;
+      }
+      else if (current_step_elapsed_ms < FOC_CURRENT_STEP_2_START_MS)
+      {
+        g_foc_id_reference_a = FOC_CURRENT_STEP_1_A;
+      }
+      else if (current_step_elapsed_ms < FOC_CURRENT_STEP_ZERO_START_MS)
+      {
+        g_foc_id_reference_a = FOC_CURRENT_STEP_2_A;
+      }
+      else
+      {
+        g_foc_id_reference_a = 0.0f;
+      }
+      /* This diagnostic deliberately exercises only the flux-producing
+       * current axis. Any sustained torque current or shaft acceleration is
+       * therefore evidence of an angle, sign, or transform error. */
+      g_foc_iq_reference_a = 0.0f;
+      g_foc_speed_reference_rpm = 0.0f;
+    }
+#endif
+
     if ((now_cycles - last_encoder_cycles) >= encoder_update_cycles)
     {
       uint16_t angle_now;
+      uint32_t encoder_service_interval_cycles =
+          now_cycles - last_encoder_cycles;
       uint32_t encoder_read_start_cycles = DWT->CYCCNT;
 
+      if (encoder_service_interval_cycles > encoder_max_service_interval_cycles)
+      {
+        encoder_max_service_interval_cycles = encoder_service_interval_cycles;
+      }
+      encoder_service_count++;
       last_encoder_cycles = now_cycles;
       if (AS5048A_ReadAngle(&angle_now))
       {
@@ -2845,75 +3505,342 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
             (SystemCoreClock / 1000000U) * FOC_ENCODER_SENSOR_DELAY_US;
         uint32_t observation_cycles =
             encoder_read_midpoint_cycles - sensor_delay_cycles;
-        uint32_t elapsed_observation_cycles =
-            observation_cycles - last_encoder_observation_cycles;
         int32_t encoder_delta = AS5048A_SignedDelta(angle_now, previous_angle);
-        float sample_dt_s =
-            (float)elapsed_observation_cycles / (float)SystemCoreClock;
-        float electrical_velocity_instant =
-            ((float)(g_foc_encoder_direction * encoder_delta *
-                     (int32_t)MOTOR_POLE_PAIRS) * TWO_PI_F) /
-            (16384.0f * sample_dt_s);
-        float electrical_velocity_filtered =
-            g_foc_electrical_velocity_rad_s +
-            (0.2f * (electrical_velocity_instant -
-                     g_foc_electrical_velocity_rad_s));
-
-        previous_angle = angle_now;
-        last_encoder_observation_cycles = observation_cycles;
         encoder_errors = 0U;
-        speed_window_counts += g_foc_encoder_direction * encoder_delta;
-        FOC_PublishEncoderObservation(
-            FOC_ElectricalAngleFromEncoder(angle_now),
-            electrical_velocity_filtered,
-            observation_cycles);
 
-        if ((now_cycles - speed_window_start_cycles) >= speed_window_cycles)
+        /* At 8 kHz, polling is slower than the AS5048A's minimum internal
+         * update rate.  An equal count can therefore be a fresh observation
+         * of a stationary/slow rotor and is allowed through the same
+         * innovation test.  At speed, a genuinely stale equal count produces
+         * a large negative innovation and is rejected below. */
+        if (encoder_delta == 0)
         {
-          uint32_t elapsed_speed_cycles =
-              now_cycles - speed_window_start_cycles;
+          encoder_duplicate_samples++;
+        }
+        {
+          uint32_t elapsed_observation_cycles =
+              observation_cycles - last_encoder_observation_cycles;
+          float sample_dt_s =
+              (float)elapsed_observation_cycles / (float)SystemCoreClock;
+          float electrical_angle_observed =
+              FOC_ElectricalAngleFromEncoder(angle_now);
+          float electrical_angle_predicted = WrapRadians(
+              g_foc_encoder_observed_angle_rad +
+              (g_foc_electrical_velocity_rad_s * sample_dt_s));
+          float encoder_innovation_rad = WrapSignedRadians(
+              electrical_angle_observed - electrical_angle_predicted);
 
-          mechanical_rpm_window =
-              ((float)speed_window_counts * 60.0f *
-               (float)SystemCoreClock) /
-              (16384.0f * (float)elapsed_speed_cycles);
-          mechanical_rpm_filtered +=
-              0.5f * (mechanical_rpm_window - mechanical_rpm_filtered);
+          g_foc_debug_encoder_innovation_rad = encoder_innovation_rad;
+          g_foc_debug_encoder_correction_rad = 0.0f;
 
-          g_foc_speed_reference_rpm = ClampFloat(
-              FOC_SPEED_REFERENCE_RAMP_RPM_S *
-                  ((float)(now_tick - start_tick) / 1000.0f),
-              0.0f, FOC_SPEED_TARGET_RPM);
+#if FOC_PREFAULT_CAPTURE_ENABLE
+          g_foc_encoder_raw_angle_rad = electrical_angle_observed;
+          g_foc_encoder_innovation_rad = encoder_innovation_rad;
+          g_foc_encoder_correction_rad = 0.0f;
+#endif
+
+          /* The AS5048A output is asynchronous to SPI, so its effective age
+           * moves by roughly one internal sample period.  Never publish the
+           * raw measurement as an abrupt phase step.  Plausible observations
+           * make a bounded PLL-like correction to the predicted angle;
+           * genuinely implausible observations are discarded. */
+          if (AbsFloat(encoder_innovation_rad) >
+              FOC_ENCODER_MAX_INNOVATION_RAD)
           {
-            float speed_error_rpm =
-                g_foc_speed_reference_rpm - mechanical_rpm_window;
-            float speed_dt_s =
-                (float)elapsed_speed_cycles / (float)SystemCoreClock;
-            float integrator_candidate = ClampFloat(
-                speed_integrator_a +
-                    (FOC_SPEED_KI_A_PER_RPM_S * speed_error_rpm * speed_dt_s),
-                -FOC_IQ_TARGET_A, FOC_IQ_TARGET_A);
-            float iq_unclamped =
-                (FOC_SPEED_KP_A_PER_RPM * speed_error_rpm) +
-                integrator_candidate;
-            float iq_command = ClampFloat(iq_unclamped,
-                                          -FOC_IQ_TARGET_A,
-                                          FOC_IQ_TARGET_A);
+            float rejected_magnitude = AbsFloat(encoder_innovation_rad);
 
-            /* Conditional integration prevents windup at the +/-4 A limit. */
-            if (iq_command == iq_unclamped ||
-                (iq_command >= FOC_IQ_TARGET_A && speed_error_rpm < 0.0f) ||
-                (iq_command <= -FOC_IQ_TARGET_A && speed_error_rpm > 0.0f))
+            encoder_rejected_samples++;
+            encoder_consecutive_rejections++;
+            if (rejected_magnitude > encoder_max_rejected_innovation_rad)
             {
-              speed_integrator_a = integrator_candidate;
+              encoder_max_rejected_innovation_rad = rejected_magnitude;
             }
-            g_foc_iq_reference_a = ClampFloat(
-                (FOC_SPEED_KP_A_PER_RPM * speed_error_rpm) +
-                    speed_integrator_a,
-                -FOC_IQ_TARGET_A, FOC_IQ_TARGET_A);
           }
-          speed_window_counts = 0;
-          speed_window_start_cycles = now_cycles;
+          else
+          {
+            float angle_correction_unclamped =
+                FOC_ENCODER_CORRECTION_GAIN * encoder_innovation_rad;
+            float angle_correction = ClampFloat(
+                angle_correction_unclamped,
+                -FOC_ENCODER_MAX_CORRECTION_RAD,
+                FOC_ENCODER_MAX_CORRECTION_RAD);
+            float electrical_velocity_instant =
+                ((float)(g_foc_encoder_direction * encoder_delta *
+                         (int32_t)MOTOR_POLE_PAIRS) * TWO_PI_F) /
+                (16384.0f * sample_dt_s);
+            /* Polling at 8 kHz sees either one or two of the AS5048A's
+             * internal updates.  A low-gain linear filter averages that
+             * deterministic timing pattern without following each step. */
+            float velocity_correction = ClampFloat(
+                FOC_ENCODER_VELOCITY_GAIN *
+                    (electrical_velocity_instant -
+                     g_foc_electrical_velocity_rad_s),
+                -FOC_ENCODER_MAX_VELOCITY_STEP_RAD_S,
+                FOC_ENCODER_MAX_VELOCITY_STEP_RAD_S);
+            float electrical_velocity_filtered =
+                g_foc_electrical_velocity_rad_s + velocity_correction;
+
+            if (angle_correction != angle_correction_unclamped)
+            {
+              encoder_limited_corrections++;
+            }
+            g_foc_debug_encoder_correction_rad = angle_correction;
+#if FOC_PREFAULT_CAPTURE_ENABLE
+            g_foc_encoder_correction_rad = angle_correction;
+#endif
+            g_foc_mechanical_position_counts +=
+                g_foc_encoder_direction * encoder_delta;
+            previous_angle = angle_now;
+            last_encoder_observation_cycles = observation_cycles;
+            encoder_consecutive_rejections = 0U;
+            speed_window_counts += g_foc_encoder_direction * encoder_delta;
+            FOC_PublishEncoderObservation(
+                WrapRadians(electrical_angle_predicted + angle_correction),
+                electrical_velocity_filtered,
+                observation_cycles);
+
+            if ((now_cycles - speed_window_start_cycles) >= speed_window_cycles)
+            {
+              uint32_t elapsed_speed_cycles =
+                  now_cycles - speed_window_start_cycles;
+
+              mechanical_rpm_window =
+                  ((float)speed_window_counts * 60.0f *
+                   (float)SystemCoreClock) /
+                  (16384.0f * (float)elapsed_speed_cycles);
+              mechanical_rpm_filtered +=
+                  FOC_SPEED_FILTER_ALPHA *
+                  (mechanical_rpm_window - mechanical_rpm_filtered);
+              g_foc_debug_mechanical_rpm_window = mechanical_rpm_window;
+              g_foc_debug_encoder_window_counts = speed_window_counts;
+
+#if FOC_POSITION_DEMO_ENABLE
+              {
+                float motor_position_deg =
+                    ((float)g_foc_mechanical_position_counts * 360.0f) /
+                    16384.0f;
+                float output_position_deg =
+                    (FOC_OUTPUT_DIRECTION_SIGN * motor_position_deg) /
+                    FOC_MOTOR_TO_OUTPUT_GEAR_RATIO;
+                float output_rpm_filtered =
+                    (FOC_OUTPUT_DIRECTION_SIGN * mechanical_rpm_filtered) /
+                    FOC_MOTOR_TO_OUTPUT_GEAR_RATIO;
+                float position_dt_s =
+                    (float)elapsed_speed_cycles / (float)SystemCoreClock;
+                float output_trajectory_remaining_deg =
+                    g_foc_output_position_target_deg -
+                    g_foc_output_trajectory_position_deg;
+                float output_trajectory_stop_rpm = sqrtf(
+                    FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S *
+                    AbsFloat(output_trajectory_remaining_deg) / 3.0f);
+                float output_trajectory_desired_rpm =
+                    (output_trajectory_remaining_deg > 0.0f) ?
+                        ClampFloat(output_trajectory_stop_rpm, 0.0f,
+                                   FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM) :
+                    (output_trajectory_remaining_deg < 0.0f) ?
+                        -ClampFloat(output_trajectory_stop_rpm, 0.0f,
+                                    FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM) :
+                        0.0f;
+                float output_trajectory_old_rpm =
+                    output_trajectory_speed_rpm;
+                float output_trajectory_rate_rpm_s =
+                    ((output_trajectory_old_rpm *
+                      output_trajectory_desired_rpm) < 0.0f ||
+                     AbsFloat(output_trajectory_desired_rpm) <
+                         AbsFloat(output_trajectory_old_rpm)) ?
+                        FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S :
+                        FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S;
+                float output_trajectory_next_deg;
+                float output_final_position_error_deg;
+                float output_tracking_position_error_deg;
+                float output_speed_error_rpm;
+                float motor_trajectory_speed_rpm;
+                float motor_speed_error_rpm;
+
+                output_trajectory_speed_rpm = RampToward(
+                    output_trajectory_old_rpm,
+                    output_trajectory_desired_rpm,
+                    output_trajectory_rate_rpm_s,
+                    position_dt_s);
+                output_trajectory_next_deg =
+                    g_foc_output_trajectory_position_deg +
+                    (0.5f * (output_trajectory_old_rpm +
+                             output_trajectory_speed_rpm) *
+                     6.0f * position_dt_s);
+
+                if ((output_trajectory_remaining_deg > 0.0f &&
+                     output_trajectory_next_deg >=
+                         g_foc_output_position_target_deg) ||
+                    (output_trajectory_remaining_deg < 0.0f &&
+                     output_trajectory_next_deg <=
+                         g_foc_output_position_target_deg) ||
+                    (AbsFloat(output_trajectory_remaining_deg) < 0.001f &&
+                     AbsFloat(output_trajectory_speed_rpm) < 0.01f))
+                {
+                  g_foc_output_trajectory_position_deg =
+                      g_foc_output_position_target_deg;
+                  output_trajectory_speed_rpm = 0.0f;
+                }
+                else
+                {
+                  g_foc_output_trajectory_position_deg =
+                      output_trajectory_next_deg;
+                }
+
+                output_final_position_error_deg =
+                    g_foc_output_position_target_deg - output_position_deg;
+                output_tracking_position_error_deg =
+                    g_foc_output_trajectory_position_deg -
+                    output_position_deg;
+                output_speed_error_rpm =
+                    output_trajectory_speed_rpm - output_rpm_filtered;
+                motor_trajectory_speed_rpm =
+                    FOC_OUTPUT_DIRECTION_SIGN *
+                    FOC_MOTOR_TO_OUTPUT_GEAR_RATIO *
+                    output_trajectory_speed_rpm;
+                motor_speed_error_rpm =
+                    motor_trajectory_speed_rpm - mechanical_rpm_filtered;
+
+                g_foc_debug_position_error_deg =
+                    output_tracking_position_error_deg;
+                g_foc_speed_reference_rpm = motor_trajectory_speed_rpm;
+                g_foc_debug_speed_error_rpm = motor_speed_error_rpm;
+
+                if (AbsFloat(g_foc_output_position_target_deg -
+                             g_foc_output_trajectory_position_deg) < 0.01f &&
+                    AbsFloat(output_trajectory_speed_rpm) < 0.01f &&
+                    AbsFloat(output_final_position_error_deg) <=
+                        FOC_OUTPUT_POSITION_TOLERANCE_DEG &&
+                    AbsFloat(output_rpm_filtered) <=
+                        FOC_OUTPUT_SPEED_TOLERANCE_RPM)
+                {
+                  if (position_hold_start_tick == 0U)
+                  {
+                    position_hold_start_tick = now_tick;
+                  }
+                  else if ((now_tick - position_hold_start_tick) >=
+                           FOC_POSITION_HOLD_MS)
+                  {
+                    if ((uint8_t)(position_target_index + 1U) <
+                        position_target_count)
+                    {
+                      position_target_index++;
+                      g_foc_output_position_target_deg =
+                          g_foc_output_position_demo_targets_deg[
+                              position_target_index];
+                      g_foc_debug_speed_integrator_a = 0.0f;
+                      position_hold_start_tick = 0U;
+                      position_step_start_tick = now_tick;
+                    }
+                    else
+                    {
+                      position_demo_completed = 1U;
+                      g_foc_speed_reference_rpm = 0.0f;
+                      g_foc_iq_reference_a = 0.0f;
+                      g_foc_enabled = 0U;
+                    }
+                  }
+                }
+                else if ((now_tick - position_step_start_tick) >=
+                         FOC_POSITION_STEP_TIMEOUT_MS)
+                {
+                  g_foc_fault = 10U;
+                  g_foc_speed_reference_rpm = 0.0f;
+                  g_foc_iq_reference_a = 0.0f;
+                  g_foc_enabled = 0U;
+                  Motor_PWM_Off();
+                }
+                else
+                {
+                  position_hold_start_tick = 0U;
+                }
+
+                if (position_demo_completed == 0U &&
+                    g_foc_enabled != 0U)
+                {
+                  float iq_unclamped =
+                      FOC_OUTPUT_DIRECTION_SIGN *
+                      ((FOC_POSITION_KP_A_PER_OUTPUT_DEG *
+                        output_tracking_position_error_deg) +
+                       (FOC_POSITION_KD_A_PER_OUTPUT_RPM *
+                        output_speed_error_rpm));
+
+                  /* The outer PD is output-referenced. This prevents the gear
+                   * conversion from multiplying its effective stiffness and
+                   * damping by the ratio; current/electrical FOC stays motor-side. */
+                  g_foc_debug_speed_integrator_a = 0.0f;
+                  g_foc_debug_breakaway_current_a = 0.0f;
+                  g_foc_debug_iq_saturated =
+                      (AbsFloat(iq_unclamped) >= foc_iq_limit_a) ? 1U : 0U;
+                  g_foc_iq_reference_a = ClampFloat(
+                      iq_unclamped,
+                      -foc_iq_limit_a,
+                      foc_iq_limit_a);
+                }
+              }
+#elif FOC_CURRENT_STEP_TEST_ENABLE
+              g_foc_debug_speed_error_rpm = -mechanical_rpm_filtered;
+              g_foc_debug_speed_integrator_a = 0.0f;
+              g_foc_debug_breakaway_current_a = 0.0f;
+              g_foc_debug_iq_saturated = 0U;
+#else
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+              g_foc_speed_reference_rpm = foc_speed_target_rpm;
+#else
+              g_foc_speed_reference_rpm = ClampFloat(
+                  FOC_SPEED_REFERENCE_RAMP_RPM_S *
+                      ((float)(now_tick - start_tick) / 1000.0f),
+                  0.0f, foc_speed_target_rpm);
+#endif
+              if (g_foc_enabled != 0U)
+              {
+                float speed_error_rpm =
+                    g_foc_speed_reference_rpm - mechanical_rpm_filtered;
+                float speed_dt_s =
+                    (float)elapsed_speed_cycles / (float)SystemCoreClock;
+                float integrator_candidate = ClampFloat(
+                    speed_integrator_a +
+                        (foc_speed_ki_a_per_rpm_s * speed_error_rpm * speed_dt_s),
+                    -foc_speed_integral_limit_a,
+                    foc_speed_integral_limit_a);
+                float iq_unclamped =
+                    (foc_speed_kp_a_per_rpm * speed_error_rpm) +
+                    integrator_candidate;
+                float iq_command = ClampFloat(iq_unclamped,
+                                              -foc_iq_limit_a,
+                                              foc_iq_limit_a);
+
+                /* Conditional integration prevents windup at the active
+                 * velocity- or position-mode torque-current limit. */
+                if (iq_command == iq_unclamped ||
+                    (iq_command >= foc_iq_limit_a && speed_error_rpm < 0.0f) ||
+                    (iq_command <= -foc_iq_limit_a && speed_error_rpm > 0.0f))
+                {
+                  speed_integrator_a = integrator_candidate;
+                }
+                g_foc_debug_speed_error_rpm = speed_error_rpm;
+                g_foc_debug_speed_integrator_a = speed_integrator_a;
+                g_foc_debug_breakaway_current_a = 0.0f;
+                g_foc_debug_iq_saturated =
+                    (AbsFloat(iq_unclamped) >= foc_iq_limit_a) ? 1U : 0U;
+                g_foc_iq_reference_a = ClampFloat(
+                    (foc_speed_kp_a_per_rpm * speed_error_rpm) +
+                        speed_integrator_a,
+                    -foc_iq_limit_a, foc_iq_limit_a);
+              }
+#endif
+              speed_window_counts = 0;
+              speed_window_start_cycles = now_cycles;
+            }
+          }
+        }
+
+        if (encoder_consecutive_rejections >=
+            FOC_ENCODER_MAX_CONSECUTIVE_REJECTIONS)
+        {
+          g_foc_fault = 7U;
+          g_foc_enabled = 0U;
+          Motor_PWM_Off();
         }
       }
       else if (++encoder_errors >= FOC_ENCODER_MAX_CONSECUTIVE_ERRORS)
@@ -2925,7 +3852,10 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                encoder_errors);
       }
 
-      if (AbsFloat(mechanical_rpm_window) > FOC_MAX_MECHANICAL_RPM)
+      /* A zero limit disables the experimental position-mode overspeed
+       * check. The velocity demo still supplies its 5200 RPM limit here. */
+      if (foc_overspeed_rpm > 0.0f &&
+          AbsFloat(mechanical_rpm_window) > foc_overspeed_rpm)
       {
         mechanical_rpm_filtered = mechanical_rpm_window;
         g_foc_fault = 4U;
@@ -2933,7 +3863,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
         Motor_PWM_Off();
         printf("FOC stopped: speed %ld rpm exceeds %ld rpm\r\n",
                (long)mechanical_rpm_window,
-               (long)FOC_MAX_MECHANICAL_RPM);
+               (long)foc_overspeed_rpm);
       }
     }
 
@@ -2945,13 +3875,18 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
       printf("FOC stopped: DRV8353S nFAULT asserted\r\n");
     }
 
-    if ((now_tick - last_log_tick) >= FOC_LOG_INTERVAL_MS)
+    if ((now_tick - last_log_tick) >= foc_log_interval_ms)
     {
       last_log_tick = now_tick;
       FOC_LogSampleCapture(now_tick - start_tick, mechanical_rpm_filtered);
       if (g_foc_log_count != 0U &&
+#if FOC_CURRENT_STEP_TEST_ENABLE
+          /* The first bucket is retained for visibility but is not a valid
+           * ISR-health decision if timer startup consumed part of it. */
+          (now_tick - start_tick) > FOC_CURRENT_STEP_LOG_INTERVAL_MS &&
+#endif
           g_foc_log[g_foc_log_count - 1U].current_samples <
-              FOC_MIN_CURRENT_SAMPLES_PER_LOG)
+              foc_min_current_samples_per_log)
       {
         uint32_t completed_samples =
             g_foc_log[g_foc_log_count - 1U].current_samples;
@@ -2964,10 +3899,21 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                (unsigned long)g_foc_log[g_foc_log_count - 1U].current_isr_max_cycles,
                (unsigned long)(((uint64_t)g_foc_log[g_foc_log_count - 1U].current_isr_max_cycles *
                                 1000000ULL) / (uint64_t)SystemCoreClock),
-               (unsigned long)(SystemCoreClock / 40000U));
+               (unsigned long)(SystemCoreClock / FOC_CURRENT_LOOP_HZ));
       }
     }
   }
+
+#if FOC_POSITION_DEMO_ENABLE
+  if (g_foc_fault == 0U && position_demo_completed == 0U)
+  {
+    g_foc_fault = 10U;
+    g_foc_speed_reference_rpm = 0.0f;
+    g_foc_iq_reference_a = 0.0f;
+    g_foc_enabled = 0U;
+    Motor_PWM_Off();
+  }
+#endif
 
   {
     uint32_t final_elapsed_ms = HAL_GetTick() - start_tick;
@@ -2981,11 +3927,58 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_iq_reference_a = 0.0f;
   g_foc_enabled = 0U;
   /* Encoder observations are serviced by the foreground loop above. Once
-   * that loop exits, do not leave PWM active while the 3000 rpm rotor keeps
-   * moving and the predicted electrical angle becomes stale. Coast
-   * immediately; writing neutral compare values is safe after MOE is clear. */
+   * that loop exits, do not leave PWM active while the rotor keeps moving
+   * and the predicted electrical angle becomes stale. Coast immediately;
+   * writing neutral compare values is safe after MOE is clear. */
   Motor_PWM_Off();
   Set_DQ_SVPWM(g_foc_electrical_angle_rad, 0.0f, 0.0f);
+  printf("FOC encoder duplicate samples suppressed=%lu\r\n",
+         (unsigned long)encoder_duplicate_samples);
+  printf("FOC encoder innovation rejections=%lu, max=%ld mrad\r\n",
+         (unsigned long)encoder_rejected_samples,
+         (long)(encoder_max_rejected_innovation_rad * 1000.0f));
+  printf("FOC encoder bounded corrections=%lu, maximum phase step=%ld mrad\r\n",
+         (unsigned long)encoder_limited_corrections,
+         (long)(FOC_ENCODER_MAX_CORRECTION_RAD * 1000.0f));
+  {
+    uint32_t elapsed_ms = HAL_GetTick() - start_tick;
+    uint32_t actual_encoder_hz =
+        (elapsed_ms != 0U) ?
+        (uint32_t)(((uint64_t)encoder_service_count * 1000ULL) / elapsed_ms) : 0U;
+    uint32_t max_encoder_gap_us =
+        (uint32_t)(((uint64_t)encoder_max_service_interval_cycles *
+                    1000000ULL) / (uint64_t)SystemCoreClock);
+
+    printf("FOC encoder actual service=%lu Hz, maximum service gap=%lu us\r\n",
+           (unsigned long)actual_encoder_hz,
+           (unsigned long)max_encoder_gap_us);
+  }
+  if (g_foc_fault == 7U)
+  {
+    printf("FOC stopped: %u consecutive encoder observations failed plausibility checks\r\n",
+           FOC_ENCODER_MAX_CONSECUTIVE_REJECTIONS);
+  }
+  else if (g_foc_fault == 8U)
+  {
+    printf("FOC stopped: accepted encoder angle became older than %lu us\r\n",
+           (unsigned long)FOC_ENCODER_PREDICTION_MAX_US);
+  }
+#if FOC_POSITION_DEMO_ENABLE
+  printf("FOC output position result: completed=%u, step=%u/%u, target=%ld mdeg, output=%ld mdeg, motor=%ld mdeg\r\n",
+         (unsigned int)position_demo_completed,
+         (unsigned int)(position_target_index + 1U),
+         (unsigned int)position_target_count,
+         (long)(g_foc_output_position_target_deg * 1000.0f),
+         (long)((((float)g_foc_mechanical_position_counts * 360000.0f) /
+                 16384.0f) * FOC_OUTPUT_DIRECTION_SIGN /
+                FOC_MOTOR_TO_OUTPUT_GEAR_RATIO),
+         (long)(((int64_t)g_foc_mechanical_position_counts * 360000LL) /
+                16384LL));
+  if (g_foc_fault == 10U)
+  {
+    printf("FOC stopped: position sequence did not settle before the step or overall timeout\r\n");
+  }
+#endif
   printf("FOC trial finished with fault=%u\r\n", g_foc_fault);
   if (g_foc_fault == 2U)
   {
@@ -3000,6 +3993,26 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
            g_foc_fault_valid_mask,
            FOC_OVERCURRENT_CONFIRM_SAMPLES);
   }
+  else if (g_foc_fault == 9U)
+  {
+    printf("FOC abnormal d/q-current snapshot: limit=%ld mA A=%ld B=%ld C=%ld Id=%ld Iq=%ld angle=%ld mrad valid_mask=0x%X\r\n",
+           (long)(g_foc_active_dq_fault_limit_a * 1000.0f),
+           (long)(g_foc_fault_ia_a * 1000.0f),
+           (long)(g_foc_fault_ib_a * 1000.0f),
+           (long)(g_foc_fault_ic_a * 1000.0f),
+           (long)(g_foc_fault_id_a * 1000.0f),
+           (long)(g_foc_fault_iq_a * 1000.0f),
+           (long)(g_foc_fault_electrical_angle_rad * 1000.0f),
+           g_foc_fault_valid_mask);
+  }
+#if FOC_PREFAULT_CAPTURE_ENABLE
+  if (g_foc_fault == 0U || g_foc_fault == 2U ||
+      g_foc_fault == 7U || g_foc_fault == 8U ||
+      g_foc_fault == 9U)
+  {
+    FOC_PreFaultDump();
+  }
+#endif
   FOC_LogDump();
 
 foc_stop:
@@ -3817,14 +4830,58 @@ int main(void)
   printf("Selected test: stepped static SVPWM field orientation\r\n");
   printf("Keep the shaft unloaded; each point is a two-second static hold\r\n");
 #elif MOTOR_FOC_DEMO_ENABLE
-  printf("Selected test: encoder-based Id/Iq current-loop FOC bring-up\r\n");
   printf("The shaft must be unloaded and free to rotate during automatic alignment\r\n");
-  printf("FOC speed target=%ld rpm, Iq limit=%ld mA, modulation=%ld/10000, hard current=%ld mA, overspeed=%ld rpm\r\n",
+#if FOC_POSITION_DEMO_ENABLE
+  printf("Selected test: geared output-position PD to Iq FOC demonstration\r\n");
+  printf("FOC AS5048A=motor-side, gearbox=%ld/1000 motor rev/output rev, direction=%ld\r\n",
+         (long)(FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000.0f),
+         (long)FOC_OUTPUT_DIRECTION_SIGN);
+  printf("FOC output-frame position P=%ld/1000 A/output-deg, D=%ld/1000 A/output-rpm, no integral or breakaway pulse\r\n",
+         (long)(FOC_POSITION_KP_A_PER_OUTPUT_DEG * 1000.0f),
+         (long)(FOC_POSITION_KD_A_PER_OUTPUT_RPM * 1000.0f));
+  printf("FOC output max=%ld x0.001 rpm, accel/decel=%ld/%ld x0.001 rpm/s; motor max=%ld rpm, accel/decel=%ld/%ld rpm/s, Iq clamp=%ld mA\r\n",
+         (long)(FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S * 1000.0f),
+         (long)(FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S * 1000.0f),
+         (long)((FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f),
+         (long)((FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f),
+         (long)((FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO) + 0.5f),
+         (long)(FOC_POSITION_IQ_LIMIT_A * 1000.0f));
+  printf("FOC protections: modulation=%ld/10000, hard phase current=%ld mA, abnormal d/q current=%ld mA\r\n",
+         (long)(FOC_MAX_MODULATION * 10000.0f),
+         (long)(FOC_POSITION_HARD_CURRENT_LIMIT_A * 1000.0f),
+         (long)(FOC_POSITION_DQ_FAULT_LIMIT_A * 1000.0f));
+#elif FOC_CURRENT_STEP_TEST_ENABLE
+  printf("Selected test: encoder-locked d-axis current-step diagnostic\r\n");
+  printf("FOC current-step firmware revision=2 (tick-synchronized)\r\n");
+  printf("FOC test holds Iq at zero and steps Id 0 -> %ld -> %ld -> 0 mA over %lu ms\r\n",
+         (long)(FOC_CURRENT_STEP_1_A * 1000.0f),
+         (long)(FOC_CURRENT_STEP_2_A * 1000.0f),
+         (unsigned long)FOC_CURRENT_STEP_TEST_DURATION_MS);
+  printf("The rotor should align first, then remain essentially stationary during the current steps\r\n");
+#else
+#if FOC_LOW_SPEED_VELOCITY_TEST_ENABLE
+  printf("Selected test: standalone +10 RPM velocity PI characterization\r\n");
+  printf("FOC low-speed velocity PI: Kp=%ld/1000 A/rpm, Ki=%ld/1000 A/(rpm*s), integral=%ld mA, Iq=%ld mA, overspeed=%ld rpm\r\n",
+         (long)(FOC_LOW_SPEED_KP_A_PER_RPM * 1000.0f),
+         (long)(FOC_LOW_SPEED_KI_A_PER_RPM_S * 1000.0f),
+         (long)(FOC_LOW_SPEED_INTEGRAL_LIMIT_A * 1000.0f),
+         (long)(FOC_LOW_SPEED_IQ_LIMIT_A * 1000.0f),
+         (long)FOC_LOW_SPEED_OVERSPEED_RPM);
+#else
+  printf("Selected test: encoder-based Id/Iq current-loop FOC bring-up\r\n");
+  printf("FOC speed target=%ld rpm, ramp=%ld rpm/s, Iq limit=%ld mA, modulation=%ld/10000, hard current=%ld mA, overspeed=%ld rpm\r\n",
          (long)FOC_SPEED_TARGET_RPM,
+         (long)FOC_SPEED_REFERENCE_RAMP_RPM_S,
          (long)(FOC_IQ_TARGET_A * 1000.0f),
          (long)(FOC_MAX_MODULATION * 10000.0f),
          (long)(FOC_HARD_CURRENT_LIMIT_A * 1000.0f),
          (long)FOC_MAX_MECHANICAL_RPM);
+#endif
+#endif
 #else
   printf("Finite open-loop SVPWM waveform capture, approximately 500 ns dead time\r\n");
   printf("Startup: 1 s fixed-angle alignment, then 0.5 eHz toward 500 eHz at 2 eHz/s\r\n");
