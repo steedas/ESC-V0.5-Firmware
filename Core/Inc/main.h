@@ -75,6 +75,10 @@ typedef struct
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
+#ifndef WILL_SVPWM_EXPERIMENT_ENABLE
+#define WILL_SVPWM_EXPERIMENT_ENABLE 1U
+#endif
+
 /* USER CODE END EM */
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);

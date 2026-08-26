@@ -22,6 +22,9 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#if WILL_SVPWM_EXPERIMENT_ENABLE
+extern TIM_HandleTypeDef htim1;
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -205,5 +208,12 @@ void ADC1_2_IRQHandler(void)
 {
   HAL_ADC_IRQHandler(&hadc1);
 }
+
+#if WILL_SVPWM_EXPERIMENT_ENABLE
+void TIM1_CC_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(&htim1);
+}
+#endif
 
 /* USER CODE END 1 */
