@@ -8,4 +8,3 @@
 ../Core/Src/stm32g4xx_it.c:174:6:PendSV_Handler	0	static
 ../Core/Src/stm32g4xx_it.c:187:6:SysTick_Handler	0	static
 ../Core/Src/stm32g4xx_it.c:207:6:ADC1_2_IRQHandler	0	static
-../Core/Src/stm32g4xx_it.c:213:6:TIM1_CC_IRQHandler	0	static

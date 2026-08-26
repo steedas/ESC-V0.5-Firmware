@@ -1,208 +1,262 @@
 # ESC V0.3 Firmware
 
-Firmware for a custom three-phase brushless DC motor controller built around an **STM32G431RBT6** microcontroller and **DRV8353** three-phase gate driver.
+Firmware for a custom three-phase BLDC/PMSM controller built around an
+STM32G431RBT6 and a DRV8353S three-phase gate driver.
 
-The project is an experimental motor-control platform used to develop and test low-level inverter control, gate-driver communication, phase-current sensing, six-step commutation, and open-loop space-vector PWM (SVPWM).
+The project is an active motor-control development platform. It now includes
+hardware bring-up tools, synchronized phase-current sensing, encoder feedback,
+open-loop commutation, field-oriented control (FOC), experimental SVPWM
+schedulers, and an initial CAN control-plane prototype.
 
 > [!WARNING]
-> This firmware controls high-current power electronics and is under active development. It is not production-ready and should not be used without appropriate current limiting, fusing, isolation, thermal monitoring, and an emergency shutdown method.
+> This firmware controls high-current power electronics and is not
+> production-ready. Use a current-limited supply, suitable fusing, an unloaded
+> motor or secured test fixture, thermal monitoring, and an immediate hardware
+> power-disconnect method. Confirm PWM polarity and dead time at the gate-driver
+> inputs before energizing the power bus.
 
-## Current Status
+## Current Build
 
-The firmware currently supports open-loop motor operation and hardware bring-up. It does **not** yet implement closed-loop field-oriented control.
+The repository is currently configured to run the encoder-based FOC demo. The
+experimental Will SVPWM path is disabled but preserved in the source.
 
-Implemented:
+| Selector | Value | Effect |
+| --- | ---: | --- |
+| `WILL_SVPWM_EXPERIMENT_ENABLE` | `0` | Excludes the standalone SVPWM probe from startup |
+| `MOTOR_FOC_DEMO_ENABLE` | `1` | Selects `Motor_FOC_Demo()` |
+| `FOC_POSITION_DEMO_ENABLE` | `1` | Enables the geared position/velocity/torque sequence |
+| `FOC_TORQUE_ONLY_DEMO_ENABLE` | `0` | Does not bypass position and velocity stages |
+| `FOC_IMPEDANCE_DEMO_ENABLE` | `0` | Impedance-only profile disabled |
+| `FOC_COMPOSITE_DEMO_ENABLE` | `0` | Five-stage composite profile disabled |
+| `FOC_VELOCITY_HEAT_TEST_ENABLE` | `0` | Long 5000 rpm thermal profile disabled |
+| `FOC_CURRENT_STEP_TEST_ENABLE` | `0` | Current-step diagnostic disabled |
+| `FOC_LOW_SPEED_VELOCITY_TEST_ENABLE` | `0` | Low-speed diagnostic disabled |
+| `CAN_FIRMWARE_ROLE` | `0` | CAN role prototype disabled |
 
-* STM32G431 peripheral initialization using STM32 HAL
-* Six complementary TIM1 PWM outputs for a three-phase inverter
-* DRV8353 SPI register read/write
-* DRV8353 fault-register polling and status indication
-* Open-loop six-step commutation
-* Open-loop SVPWM with electrical-frequency ramping
-* Three-channel phase-current measurement through ADC1
-* Current-sense offset calibration utilities
-* DWT cycle-counter timing for microsecond delays
-* UART debug output
-* Configured FDCAN, SPI3, I2C3, and USB peripherals for continued development
+The selected FOC run performs automatic rotor alignment and then exercises the
+geared output-position PID, ramped velocity PI, and Kt-based torque-control
+stages. FOC starts with 56 TIM1 dead-time ticks, approximately 500 ns at the
+112 MHz timer clock.
 
-Planned:
+## Development Progress
 
-* Encoder-based rotor-angle feedback
-* Closed-loop current control
-* Field-oriented control
-* Torque and velocity control
-* CAN command and telemetry protocol
-* Hardware-backed overcurrent and thermal shutdown
-* Configuration storage and calibration persistence
+### Hardware and gate-driver bring-up
+
+- Six complementary TIM1 outputs for a three-phase inverter
+- Explicit PWM off/on sequencing and main-output-enable handling
+- DRV8353S register reads, writes, verification, and raw fault dumps
+- Bit-banged SPI diagnostics for the board's crossed PA6/PA7 data routing
+- DRV `nFAULT` monitoring with immediate PWM and gate-driver shutdown
+- UART1 diagnostics on PC4 at 9600 baud, 8-N-1
+- DWT cycle-counter timing for short deterministic delays
+- Status GPIOs for timing and test-window observation
+
+The normal startup currently preserves the verified DRV8353S reset
+configuration rather than applying the full experimental driver configuration.
+Manual CSA calibration is enabled during current-offset calibration and then
+removed before motor operation.
+
+### Phase-current sensing
+
+- Three ADC1 current channels with PWM-synchronized sampling
+- 512-sample, PWM-off offset calibration for each channel
+- 1 mOhm shunt and verified 20 V/V CSA conversion
+- Channel-specific offsets and raw ADC saturation checks
+- Sampling-window validity tracking
+- Dynamic two-shunt reconstruction when one phase is not measurable
+- Phase-B PWM-dependent bias correction used by the FOC path
+- Moving-average and diagnostic current helpers
+- Software current and d/q fault thresholds for the applicable demos
+- Optional pre-fault and CSV telemetry capture
+
+Recent zero-current measurements were centered near half scale with roughly
+10-12 ADC counts peak-to-peak per channel. These are board observations, not
+universal calibration constants; calibration is repeated at startup.
+
+### Encoder and field-oriented control
+
+- AS5048A magnetic encoder support over SPI3 with parity/error handling
+- Automatic electrical-zero alignment
+- Verified encoder direction and current polarity settings
+- Angle prediction and bounded observer correction for sensor latency
+- 20 kHz d/q current loop with Clarke/Park and inverse transforms
+- Sine lookup table with interpolation for fast trigonometry
+- PI d/q current regulators with saturation handling
+- Space-vector/common-mode voltage limiting
+- Encoder-staleness, innovation, overspeed, overcurrent, and DRV fault handling
+- Geared output-position PID with trajectory generation and anti-windup
+- Output-velocity PI with acceleration/deceleration ramps
+- Kt-based positive and negative torque commands
+
+Additional selectable FOC profiles remain available in `Core/Src/main.c`:
+
+- Torque-only demonstration
+- Fixed-angle impedance control
+- Composite impedance, position, velocity, open-loop SVPWM, and six-step demo
+- Long velocity thermal run
+- Encoder-locked current-step test
+- Low-speed velocity test
+
+### Open-loop six-step and SVPWM
+
+- Six-step commutation with complementary PWM and a floating phase
+- Rotor-alignment and frequency/duty ramp helpers
+- Center-aligned open-loop SVPWM with modulation and speed ramps
+- Static stator-field orientation test
+- Finite and continuous probe modes
+- Current logging and driver-fault shutdown paths
+
+At 112 MHz with TIM1 prescaler `0` and ARR `2799`, center-aligned PWM is
+nominally 20 kHz:
+
+```text
+112,000,000 / (2 x (2799 + 1)) = 20,000 Hz
+```
+
+Electrical and mechanical rotation are related by the motor's pole-pair count:
+
+```text
+mechanical RPM = electrical Hz x 60 / pole pairs
+```
+
+The configured motor has 14 pole pairs, so one mechanical revolution requires
+14 electrical revolutions.
+
+### SVPWM continuity and acoustic-noise investigation
+
+The standalone Will SVPWM work has been retained for controlled A/B testing:
+
+- `W_SVPWM_Start_Efficient()` preserves the original direct implementation.
+- `W_SVPWM_Start_Efficient_Ramp()` preserves the user-readable ramp version.
+- `W_SVPWM_Start_Efficient_Copilot()` is the separate aligned and time-based
+  ramp implementation.
+- `W_SVPWM_Start_Efficient_Ramp_Counter()` copies the readable ramp while
+  replacing its one-bit update flag with the monotonic timer-event counter.
+
+The code uses float constants (`PI_F` and `TWO_PI_F`) instead of double-typed
+`M_PI` expressions in the real-time modulation math. The timer callback keeps
+both the original update flag and a monotonic `svpwm_update_count`, allowing the
+implementations to be compared without deleting either approach.
+
+The counter-ramp clone applies every elapsed timer event to the original
+`+0.0005f` rad/s-per-event velocity ramp and angle accumulator. At the end of a
+normal probe it reports the number of backlogged updates and the largest batch
+seen by the foreground loop. A zero backlog with a maximum batch of one means
+the loop did not observe multiple pending timer events.
+
+Hardware observations so far:
+
+- The measured SVPWM waveform appeared continuous and correctly shaped on the
+  oscilloscope; small apparent jumps may still depend on probe triggering and
+  sample depth.
+- A low-modulation, higher-electrical-frequency test ran without the earlier
+  high-pitched noise.
+- The readable ramp improved the sound but remained noisier than the separate
+  Copilot implementation, motivating the counter-only comparison.
+- A 1 electrical Hz, 0.5 modulation test drew approximately 125 W and asserted
+  DRV `nFAULT`; firmware captured raw status values `0x480` and `0x040` and
+  inhibited PWM. That operating point should not be repeated without strict
+  current limiting and further diagnosis.
+- TIM1 dead time for the standalone comparison was reduced to 11 ticks,
+  approximately 98 ns before any timing added by the DRV8353S. The restored FOC
+  demo continues to request the more conservative 56-tick/500 ns setting.
+
+The disabled probe constants are currently 100 electrical Hz, 120 seconds, and
+0.05 modulation. Re-enabling the probe requires deliberately changing
+`WILL_SVPWM_EXPERIMENT_ENABLE`; do not enable it merely to build the project.
+
+### CAN progress
+
+An initial classic-CAN control-plane protocol is present but disabled by
+default. It includes:
+
+- 1 Mbit/s FDCAN configuration
+- Node heartbeat and status flags
+- Global emergency-stop identifier
+- State-command parsing and validation
+- Fault-latched safe states and forced PWM inhibition
+- A second-device sender/test-controller role
+
+This is currently a safe control-plane increment, not a completed motor command
+or telemetry interface.
 
 ## Hardware Target
 
-| Component                   | Configuration             |
-| --------------------------- | ------------------------- |
-| Microcontroller             | STM32G431RBT6             |
-| Package                     | LQFP64                    |
-| Gate driver                 | DRV8353                   |
-| Inverter interface          | Six-PWM mode              |
-| Phase PWM timer             | TIM1                      |
-| Current sensing             | ADC1 channels 6, 7, and 8 |
-| Gate-driver interface       | SPI1, 16-bit              |
-| Additional sensor interface | SPI3                      |
-| Communications              | FDCAN1, USART1, USB       |
-| System clock                | 112 MHz                   |
-| Debug interface             | SWD                       |
+| Component | Configuration |
+| --- | --- |
+| Microcontroller | STM32G431RBT6, LQFP64 |
+| Gate driver | DRV8353S |
+| Inverter interface | Six-PWM mode |
+| System/TIM1 clock | 112 MHz |
+| PWM/current-loop rate | 20 kHz |
+| Phase PWM timer | TIM1 |
+| Current sensing | ADC1 channels 6, 7, and 8 |
+| Current shunts / CSA | 1 mOhm / verified 20 V/V |
+| Rotor encoder | AS5048A over SPI3 |
+| Motor pole pairs | 14 |
+| Motor/output gear ratio | 11:1 |
+| Gate-driver diagnostics | SPI1/bit-banged PA4-PA7 path |
+| Communications | USART1, FDCAN1, USB |
+| Debug interface | SWD |
 
-The code is designed specifically for the matching ESC V0.3 hardware. Pin assignments, current-sense scaling, PWM polarity, and gate-driver settings must be reviewed before using it with another board.
+The pin assignments, shunt scaling, PWM polarity, current polarity, encoder
+direction, pole-pair count, and gear ratio are hardware-specific and must be
+reviewed before using this firmware on another board or motor.
 
-## Motor-Control Modes
+## Important Source Locations
 
-### Open-Loop Six-Step Commutation
-
-The six-step implementation energizes two phases at a time while leaving the third phase disconnected. Electrical frequency is converted into a delay between the six commutation states.
-
-Available development routines include:
-
-* Fixed-frequency six-step commutation
-* Six-step commutation with phase-current logging
-* Filtered current measurements
-* Frequency ramp testing
-
-### Open-Loop SVPWM
-
-The SVPWM implementation generates a rotating voltage vector without encoder feedback:
-
-1. The electrical angle is advanced using the commanded electrical frequency.
-2. An inverse Park transform converts the requested `Vd` and `Vq` values into the stationary reference frame.
-3. Three phase-voltage references are generated.
-4. Common-mode offset injection centers the phase commands within the available DC-bus range.
-5. TIM1 compare registers are updated with the resulting phase duties.
-
-TIM1 is changed to center-aligned mode for SVPWM. With the current 112 MHz timer clock, prescaler of `0`, and period of `2799`, the PWM carrier is nominally **20 kHz** in center-aligned mode.
-
-Because this mode is open loop, the generated electrical angle is not synchronized to the actual rotor position. Excessive acceleration, insufficient voltage, or load disturbances can cause the motor to lose synchronization.
-
-## Important Configuration
-
-Motor-control constants are currently located near the top of `Core/Src/main.c`.
-
-| Constant                     | Current value | Description                                    |
-| ---------------------------- | ------------: | ---------------------------------------------- |
-| `MOTOR_POLE_PAIRS`           |          `12` | Motor pole-pair count used for RPM calculation |
-| `MOTOR_START_ELECTRICAL_HZ`  |         `5.0` | Initial electrical frequency                   |
-| `MOTOR_HIGH_ELECTRICAL_HZ`   |       `500.0` | Ramp target                                    |
-| `MOTOR_LOW_ELECTRICAL_HZ`    |        `10.0` | Low-speed target used by test routines         |
-| `MOTOR_RAMP_EHZ_PER_SEC`     |        `15.0` | Open-loop electrical acceleration              |
-| `MOTOR_SVPWM_UPDATE_US`      |         `250` | SVPWM reference update interval                |
-| `MOTOR_OPEN_LOOP_MODULATION` |        `0.08` | Open-loop voltage command                      |
-| `MOTOR_SVPWM_MAX_INDEX`      |     `0.57735` | Maximum permitted modulation command           |
-| `MOTOR_TIM1_DEADTIME_TICKS`  |           `0` | MCU timer dead time                            |
-
-The current-sense conversion is defined by:
-
-```c
-#define ADC_VREF      3.3f
-#define CURRENT_GAIN  (0.0015f * 20.0f)
-```
-
-`CURRENT_GAIN` must equal the actual shunt resistance multiplied by the DRV8353 current-shunt-amplifier gain. Update this value if the hardware shunt or amplifier gain differs.
-
-> [!CAUTION]
-> `MOTOR_TIM1_DEADTIME_TICKS` is currently set to zero. Confirm that adequate dead time is configured in the DRV8353 before enabling the power stage. Never assume that the existing settings are safe for a different MOSFET, gate resistance, bus voltage, or PCB layout.
-
-## Repository Structure
+Most test selectors, gains, limits, and motor constants are near the top of
+`Core/Src/main.c`. The standalone SVPWM experiment selector is in
+`Core/Inc/main.h` because it also controls timer interrupt setup in the HAL MSP
+and interrupt source files.
 
 ```text
 ESC-V0.3-Firmware/
-├── Core/
-│   ├── Inc/                    # Application and interrupt headers
-│   ├── Src/
-│   │   └── main.c             # Motor-control and application logic
-│   └── Startup/               # STM32 startup assembly
-├── Drivers/
-│   ├── CMSIS/                 # ARM and STM32 device support
-│   └── STM32G4xx_HAL_Driver/  # STM32 HAL drivers
-├── Debug/                     # Generated debug-build files
-├── ESC-V0.3-Firmware.ioc      # STM32CubeMX hardware configuration
-├── STM32G431RBTX_FLASH.ld     # Linker script
-├── .project                   # STM32CubeIDE project definition
-└── .cproject                  # Eclipse/CDT build configuration
+|-- Core/
+|   |-- Inc/main.h                 hardware definitions and SVPWM selector
+|   |-- Src/main.c                 control code, tests, and configuration
+|   |-- Src/stm32g4xx_hal_msp.c    peripheral and interrupt setup
+|   `-- Src/stm32g4xx_it.c         interrupt handlers
+|-- Drivers/                       STM32 HAL and CMSIS
+|-- Debug/                         generated debug-build output
+|-- ESC-V0.3-Firmware.ioc          STM32CubeMX configuration
+|-- STM32G431RBTX_FLASH.ld         linker script
+|-- .project                       STM32CubeIDE project
+`-- .cproject                      Eclipse/CDT build configuration
 ```
 
-## Getting Started
+Regenerating code from the `.ioc` file may overwrite changes made outside STM32
+`USER CODE` sections. Review generated diffs before accepting them.
 
-### Requirements
+## Build and Flash
 
-* STM32CubeIDE
-* ST-LINK programmer/debugger
-* ESC V0.3 controller hardware
-* Current-limited DC power supply
-* Compatible three-phase BLDC or PMSM motor
-* Oscilloscope for verifying gate and phase behavior
-* Appropriate fuse and emergency power-disconnect method
+1. Install STM32CubeIDE with the STM32G4 GNU Arm toolchain.
+2. Import the repository as an existing project.
+3. Select the `Debug` build configuration.
+4. Build and flash through ST-LINK/SWD.
+5. Observe the complete UART startup diagnostics before enabling bus power.
 
-### Clone the Repository
+The command-line build uses the generated makefiles in `Debug/` and
+`mingw32-make` supplied with STM32CubeIDE.
 
-```bash
-git clone https://github.com/steedas/ESC-V0.3-Firmware.git
-cd ESC-V0.3-Firmware
-```
+## Hardware Test Checklist
 
-### Import and Build
-
-1. Open STM32CubeIDE.
-2. Select **File → Import**.
-3. Choose **Existing Projects into Workspace**.
-4. Select the cloned repository.
-5. Build the `Debug` configuration.
-6. Connect an ST-LINK programmer through SWD.
-7. Flash and debug the firmware.
-
-The `.ioc` file can be opened in STM32CubeMX or STM32CubeIDE to inspect peripheral and pin configuration. Regenerating code may overwrite changes made outside the STM32 `USER CODE` sections.
-
-## Initial Bring-Up Procedure
-
-Before connecting a motor:
-
-1. Power the logic section from a current-limited supply.
-2. Confirm that the 3.3 V rail is stable.
-3. Verify the STM32 clock and SWD connection.
-4. Confirm that `DRV_ENABLE` remains in a safe state during startup.
-5. Read the DRV8353 fault registers over SPI.
-6. Verify all six PWM signals without the MOSFET power bus energized.
-7. Confirm complementary polarity and dead time at the gate-driver inputs.
-8. Energize the power stage at reduced bus voltage with a strict current limit.
-9. Test with no mechanical load before increasing voltage, modulation, frequency, or acceleration.
-
-Immediately disable power if the MOSFETs heat rapidly, the supply enters current limit, the motor loses synchronization, or the DRV8353 reports a fault.
-
-## Debugging
-
-The firmware exposes two status outputs:
-
-* `STATUS_1` is used for SPI and DRV8353 fault indication.
-* `STATUS_2` is toggled during SVPWM updates as a basic activity indicator.
-
-Useful runtime values include:
-
-* Target electrical frequency
-* Actual commanded electrical frequency
-* Estimated mechanical RPM
-* PWM frequency
-* Modulation index
-* Phase-current measurements
-* DRV8353 fault-status registers
-
-Mechanical speed is estimated from electrical frequency:
-
-```text
-mechanical RPM = electrical frequency × 60 / pole pairs
-```
-
-This is only a commanded-speed estimate during open-loop operation; it is not a measured rotor speed.
-
-
+1. Keep the power stage unenergized and verify logic power, clocks, UART, and
+   SWD access.
+2. Confirm the DRV8353S register dump and `nFAULT` state.
+3. Verify all six PWM inputs, complementary polarity, and dead time with an
+   oscilloscope.
+4. Confirm current offsets and noise while PWM is inhibited.
+5. Check encoder direction, angle continuity, and magnet diagnostics.
+6. Energize at reduced bus voltage with a strict supply-current limit.
+7. Keep the shaft unloaded for automatic FOC alignment and speed tests.
+8. Use a secured fixture for torque or impedance tests; do not restrain the
+   shaft by hand.
+9. Stop immediately for a DRV fault, unexpected current, rapid heating, loss of
+   synchronization, or incorrect encoder motion.
 
 ## License
 
-This repository does not currently include a project-level license. Add a license before distributing or permitting reuse of the project.
-
-STM32 HAL, CMSIS, and generated STMicroelectronics files remain subject to their respective license terms.
+This repository does not currently include a project-level license. Add one
+before distributing the project or granting reuse. STM32 HAL, CMSIS, and
+generated STMicroelectronics files remain subject to their respective terms.
