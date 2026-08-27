@@ -27,16 +27,51 @@ experimental Will SVPWM path is disabled but preserved in the source.
 | `FOC_POSITION_DEMO_ENABLE` | `1` | Enables the geared position/velocity/torque sequence |
 | `FOC_TORQUE_ONLY_DEMO_ENABLE` | `0` | Does not bypass position and velocity stages |
 | `FOC_IMPEDANCE_DEMO_ENABLE` | `0` | Impedance-only profile disabled |
+| `FOC_PRE_POSITION_IMPEDANCE_ENABLE` | `0` | Pre-position stiffness sequence disabled |
+| `FOC_FORCE_SCALE_TEST_ENABLE` | `1` | Selects the bounded bar-and-scale force test |
 | `FOC_COMPOSITE_DEMO_ENABLE` | `0` | Five-stage composite profile disabled |
 | `FOC_VELOCITY_HEAT_TEST_ENABLE` | `0` | Long 5000 rpm thermal profile disabled |
 | `FOC_CURRENT_STEP_TEST_ENABLE` | `0` | Current-step diagnostic disabled |
 | `FOC_LOW_SPEED_VELOCITY_TEST_ENABLE` | `0` | Low-speed diagnostic disabled |
 | `CAN_FIRMWARE_ROLE` | `0` | CAN role prototype disabled |
 
-The selected FOC run performs automatic rotor alignment and then exercises the
-geared output-position PID, ramped velocity PI, and Kt-based torque-control
-stages. FOC starts with 56 TIM1 dead-time ticks, approximately 500 ns at the
-112 MHz timer clock.
+The selected FOC run performs automatic rotor alignment, a five-second PWM-off
+arming pause, a slow current-limited move toward the CCW scale, and a
+single-direction torque-current ramp after rigid contact is detected. Contact
+requires at least 0.25 output degree of travel followed by 500 ms below 0.25
+output rpm while the 6 A approach command is nearly saturated and substantial
+travel remains. This addresses the August 27 scale run, where the bar stopped
+at about -2.75 degrees, and the subsequent run where the reassembled fixture
+contacted at about -0.377 degrees. The old -45-degree position-settle
+requirement—and then the original 1-degree travel gate—kept the load stage from
+starting.
+
+The active load profile allows seven seconds to reach a 70 A command at
+10 A/s, holds for at least 0.25 second, and ramps back to zero over seven
+seconds. The 6 A
+position-controlled approach has separate 12 A phase and 10 A d/q thresholds
+so it can overcome the measured drivetrain breakaway friction before declaring
+contact. The load stage has a 72 A abnormal d/q threshold and 75 A hard phase
+threshold. A 120 motor-rpm approach limit and 150 motor-rpm torque-mode
+overspeed shutdown, DRV `nFAULT` monitoring, and the
+PWM-off completion path remain active. At the configured 11:1 gear ratio,
+estimated 0.02984 N m/A motor Kt, and configured 238.1 mm measured lever arm, the
+40 A, 50 A, 60 A, and 66 A runs produced 12.443 N m, 15.944 N m, 18.182 N m,
+and 19.074 N m. Scaling the latest result gives 69.2 A for 20.0 N m. The active
+70 A target predicts approximately 20.23 N m and an 8660 g scale reading. FOC
+starts with 56 TIM1 dead-time ticks,
+approximately 500 ns at the 112 MHz timer clock.
+
+The contact-to-load handoff preserves the 6 A approach torque as the initial
+torque-ramp state. An earlier handoff reset Iq to zero for one control interval,
+allowing the compressed scale fixture to rebound and produce a misleading
+opposite-direction overspeed fault before the load ramp had started.
+
+The 60 A attempt reached approximately 55.5 A before the DRV8353S asserted
+`nFAULT`. The FOC shutdown path now removes PWM, reads both latched DRV fault
+registers while the driver is still enabled, prints their raw values, and
+decodes VDS overcurrent, gate-drive, undervoltage, thermal, CSA overcurrent, and
+phase-specific VDS/VGS flags before disabling the driver.
 
 ## Development Progress
 

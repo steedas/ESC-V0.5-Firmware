@@ -108,6 +108,8 @@
 #define FOC_POSITION_DEMO_ENABLE     1U
 #define FOC_TORQUE_ONLY_DEMO_ENABLE  0U
 #define FOC_IMPEDANCE_DEMO_ENABLE    0U
+#define FOC_PRE_POSITION_IMPEDANCE_ENABLE 0U
+#define FOC_FORCE_SCALE_TEST_ENABLE  1U
 #define FOC_COMPOSITE_DEMO_ENABLE    0U
 #define FOC_VELOCITY_HEAT_TEST_ENABLE 0U
 #define FOC_CURRENT_STEP_TEST_ENABLE 0U
@@ -317,6 +319,75 @@
 #define FOC_TORQUE_RAMP_MOTOR_NM_PER_S              0.240f
 #define FOC_TORQUE_LOAD_PAUSE_SEC                        5U
 #define FOC_TORQUE_OVERSPEED_MOTOR_RPM          1500.0f
+#define FOC_FORCE_TEST_CCW_SIGN                      -1.0f
+#define FOC_FORCE_TEST_CONTACT_OUTPUT_DEG            45.0f
+#define FOC_FORCE_TEST_APPROACH_MAX_OUTPUT_RPM        2.0f
+#define FOC_FORCE_TEST_APPROACH_ACCEL_OUTPUT_RPM_S    4.0f
+#define FOC_FORCE_TEST_APPROACH_IQ_LIMIT_A            6.0f
+#define FOC_FORCE_TEST_CONTACT_SETTLE_MS             1000U
+#define FOC_FORCE_TEST_CONTACT_MIN_TRAVEL_DEG          0.25f
+#define FOC_FORCE_TEST_CONTACT_MAX_OUTPUT_RPM          0.25f
+#define FOC_FORCE_TEST_CONTACT_MIN_IQ_A                5.5f
+#define FOC_FORCE_TEST_CONTACT_MIN_REMAINING_DEG       3.0f
+#define FOC_FORCE_TEST_CONTACT_CONFIRM_MS             500U
+#define FOC_FORCE_TEST_TARGET_IQ_A                    70.0f
+#define FOC_FORCE_TEST_IQ_RAMP_A_PER_S                10.0f
+#define FOC_FORCE_TEST_TORQUE_RAMP_MS                 7000U
+#define FOC_FORCE_TEST_TORQUE_HOLD_MS                  250U
+#define FOC_FORCE_TEST_TORQUE_DURATION_MS \
+    ((2U * FOC_FORCE_TEST_TORQUE_RAMP_MS) + \
+     FOC_FORCE_TEST_TORQUE_HOLD_MS)
+#define FOC_FORCE_TEST_TORQUE_SETTLE_TIMEOUT_MS       1000U
+#define FOC_FORCE_TEST_ARMING_PAUSE_SEC                   5U
+#define FOC_FORCE_TEST_APPROACH_OVERSPEED_MOTOR_RPM   120.0f
+#define FOC_FORCE_TEST_TORQUE_OVERSPEED_MOTOR_RPM     150.0f
+#define FOC_FORCE_TEST_APPROACH_HARD_CURRENT_LIMIT_A    12.0f
+#define FOC_FORCE_TEST_APPROACH_DQ_FAULT_LIMIT_A        10.0f
+#define FOC_FORCE_TEST_HARD_CURRENT_LIMIT_A            75.0f
+#define FOC_FORCE_TEST_DQ_FAULT_LIMIT_A                72.0f
+/* Update this to the measured shaft-center to scale-contact distance. */
+#define FOC_FORCE_TEST_LEVER_ARM_MM                    238.1f
+#if FOC_FORCE_SCALE_TEST_ENABLE
+#define FOC_ACTIVE_POSITION_MAX_OUTPUT_RPM \
+    FOC_FORCE_TEST_APPROACH_MAX_OUTPUT_RPM
+#define FOC_ACTIVE_POSITION_ACCEL_OUTPUT_RPM_S \
+    FOC_FORCE_TEST_APPROACH_ACCEL_OUTPUT_RPM_S
+#define FOC_ACTIVE_POSITION_DECEL_OUTPUT_RPM_S \
+    FOC_FORCE_TEST_APPROACH_ACCEL_OUTPUT_RPM_S
+#define FOC_ACTIVE_POSITION_HOLD_MS \
+    FOC_FORCE_TEST_CONTACT_SETTLE_MS
+#define FOC_ACTIVE_POSITION_KP_A_PER_OUTPUT_DEG       0.500f
+#define FOC_ACTIVE_POSITION_KI_A_PER_OUTPUT_DEG_S     0.000f
+#define FOC_ACTIVE_POSITION_KD_A_PER_OUTPUT_RPM       0.500f
+#define FOC_ACTIVE_TORQUE_TARGET_MOTOR_NM \
+    (FOC_FORCE_TEST_TARGET_IQ_A * FOC_MOTOR_ESTIMATED_KT_NM_PER_A)
+#define FOC_ACTIVE_TORQUE_RAMP_MOTOR_NM_PER_S \
+    (FOC_FORCE_TEST_IQ_RAMP_A_PER_S * FOC_MOTOR_ESTIMATED_KT_NM_PER_A)
+#define FOC_ACTIVE_TORQUE_DURATION_MS \
+    FOC_FORCE_TEST_TORQUE_DURATION_MS
+#define FOC_ACTIVE_TORQUE_SETTLE_TIMEOUT_MS \
+    FOC_FORCE_TEST_TORQUE_SETTLE_TIMEOUT_MS
+#else
+#define FOC_ACTIVE_POSITION_MAX_OUTPUT_RPM \
+    FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM
+#define FOC_ACTIVE_POSITION_ACCEL_OUTPUT_RPM_S \
+    FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S
+#define FOC_ACTIVE_POSITION_DECEL_OUTPUT_RPM_S \
+    FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S
+#define FOC_ACTIVE_POSITION_HOLD_MS FOC_POSITION_HOLD_MS
+#define FOC_ACTIVE_POSITION_KP_A_PER_OUTPUT_DEG \
+    FOC_POSITION_KP_A_PER_OUTPUT_DEG
+#define FOC_ACTIVE_POSITION_KI_A_PER_OUTPUT_DEG_S \
+    FOC_POSITION_KI_A_PER_OUTPUT_DEG_S
+#define FOC_ACTIVE_POSITION_KD_A_PER_OUTPUT_RPM \
+    FOC_POSITION_KD_A_PER_OUTPUT_RPM
+#define FOC_ACTIVE_TORQUE_TARGET_MOTOR_NM FOC_TORQUE_TARGET_MOTOR_NM
+#define FOC_ACTIVE_TORQUE_RAMP_MOTOR_NM_PER_S \
+    FOC_TORQUE_RAMP_MOTOR_NM_PER_S
+#define FOC_ACTIVE_TORQUE_DURATION_MS FOC_TORQUE_DEMO_DURATION_MS
+#define FOC_ACTIVE_TORQUE_SETTLE_TIMEOUT_MS \
+    FOC_TORQUE_SETTLE_TIMEOUT_MS
+#endif
 #define FOC_IMPEDANCE_TARGET_OUTPUT_DEG                 0.0f
 #define FOC_IMPEDANCE_DEMO_DURATION_MS                60000U
 #define FOC_COMPOSITE_IMPEDANCE_DURATION_MS           15000U
@@ -659,6 +730,12 @@ static uint8_t g_foc_debug_iq_saturated = 0U;
 static float g_foc_debug_speed_integrator_a = 0.0f;
 static float g_foc_debug_breakaway_current_a = 0.0f;
 #if FOC_POSITION_DEMO_ENABLE
+#if FOC_FORCE_SCALE_TEST_ENABLE
+static const float g_foc_output_position_demo_targets_deg[] =
+{
+  FOC_FORCE_TEST_CCW_SIGN * FOC_FORCE_TEST_CONTACT_OUTPUT_DEG
+};
+#else
 static const float g_foc_output_position_demo_targets_deg[] =
 {
   0.0f, 45.0f, 90.0f, 135.0f, 180.0f,
@@ -666,6 +743,7 @@ static const float g_foc_output_position_demo_targets_deg[] =
   315.0f, 270.0f, 225.0f, 180.0f, 135.0f,
   90.0f, 45.0f, 0.0f
 };
+#endif
 #endif
 static volatile float g_foc_telemetry_id_sum = 0.0f;
 static volatile float g_foc_telemetry_iq_sum = 0.0f;
@@ -1098,6 +1176,29 @@ static void Motor_ReportDRVFaultAndShutdown(const char *stage)
     g_drv_vgs_status2 = vgs_status2;
     printf("%s DRV8353S fault: status1=0x%03X, status2=0x%03X; disabling gate driver\r\n",
            stage, fault_status1, vgs_status2);
+    printf("DRV fault decode: VDS_OCP=%u GDF=%u UVLO=%u OTSD=%u; SA_OC=%u SB_OC=%u SC_OC=%u OTW=%u GDUV=%u\r\n",
+           (unsigned int)((fault_status1 >> 9) & 1U),
+           (unsigned int)((fault_status1 >> 8) & 1U),
+           (unsigned int)((fault_status1 >> 7) & 1U),
+           (unsigned int)((fault_status1 >> 6) & 1U),
+           (unsigned int)((vgs_status2 >> 10) & 1U),
+           (unsigned int)((vgs_status2 >> 9) & 1U),
+           (unsigned int)((vgs_status2 >> 8) & 1U),
+           (unsigned int)((vgs_status2 >> 7) & 1U),
+           (unsigned int)((vgs_status2 >> 6) & 1U));
+    printf("DRV phase detail: VDS_HA=%u VDS_LA=%u VDS_HB=%u VDS_LB=%u VDS_HC=%u VDS_LC=%u; VGS_HA=%u VGS_LA=%u VGS_HB=%u VGS_LB=%u VGS_HC=%u VGS_LC=%u\r\n",
+           (unsigned int)((fault_status1 >> 5) & 1U),
+           (unsigned int)((fault_status1 >> 4) & 1U),
+           (unsigned int)((fault_status1 >> 3) & 1U),
+           (unsigned int)((fault_status1 >> 2) & 1U),
+           (unsigned int)((fault_status1 >> 1) & 1U),
+           (unsigned int)(fault_status1 & 1U),
+           (unsigned int)((vgs_status2 >> 5) & 1U),
+           (unsigned int)((vgs_status2 >> 4) & 1U),
+           (unsigned int)((vgs_status2 >> 3) & 1U),
+           (unsigned int)((vgs_status2 >> 2) & 1U),
+           (unsigned int)((vgs_status2 >> 1) & 1U),
+           (unsigned int)(vgs_status2 & 1U));
   }
   else
   {
@@ -3981,6 +4082,16 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   uint32_t foc_min_current_samples_per_log =
       FOC_IMPEDANCE_MIN_CURRENT_SAMPLES_PER_LOG;
   float foc_overspeed_rpm = FOC_IMPEDANCE_OVERSPEED_MOTOR_RPM;
+#elif FOC_FORCE_SCALE_TEST_ENABLE
+  const uint32_t foc_test_duration_ms =
+      FOC_POSITION_TEST_DURATION_MS +
+      FOC_FORCE_TEST_TORQUE_DURATION_MS +
+      FOC_FORCE_TEST_TORQUE_SETTLE_TIMEOUT_MS;
+  uint32_t foc_log_interval_ms = FOC_POSITION_LOG_INTERVAL_MS;
+  uint32_t foc_min_current_samples_per_log =
+      FOC_POSITION_MIN_CURRENT_SAMPLES_PER_LOG;
+  float foc_overspeed_rpm =
+      FOC_FORCE_TEST_APPROACH_OVERSPEED_MOTOR_RPM;
 #elif FOC_TORQUE_ONLY_DEMO_ENABLE
   const uint32_t foc_test_duration_ms =
       FOC_TORQUE_DEMO_DURATION_MS + FOC_TORQUE_SETTLE_TIMEOUT_MS;
@@ -4009,6 +4120,18 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   uint32_t foc_min_current_samples_per_log =
       FOC_IMPEDANCE_MIN_CURRENT_SAMPLES_PER_LOG;
   float foc_overspeed_rpm = FOC_IMPEDANCE_OVERSPEED_MOTOR_RPM;
+#elif FOC_PRE_POSITION_IMPEDANCE_ENABLE
+  const uint32_t foc_test_duration_ms =
+      FOC_COMPOSITE_IMPEDANCE_DURATION_MS +
+      FOC_POSITION_TEST_DURATION_MS +
+      FOC_VELOCITY_DEMO_DURATION_MS +
+      FOC_VELOCITY_SETTLE_TIMEOUT_MS +
+      FOC_TORQUE_DEMO_DURATION_MS +
+      FOC_TORQUE_SETTLE_TIMEOUT_MS;
+  uint32_t foc_log_interval_ms = FOC_IMPEDANCE_LOG_INTERVAL_MS;
+  uint32_t foc_min_current_samples_per_log =
+      FOC_IMPEDANCE_MIN_CURRENT_SAMPLES_PER_LOG;
+  float foc_overspeed_rpm = FOC_IMPEDANCE_OVERSPEED_MOTOR_RPM;
 #else
   const uint32_t foc_test_duration_ms =
       FOC_POSITION_TEST_DURATION_MS +
@@ -4029,7 +4152,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   float impedance_peak_abs_iq_a = 0.0f;
   uint8_t impedance_demo_completed = 0U;
 #else
-#if FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
   uint32_t impedance_control_updates = 0U;
   uint32_t impedance_iq_saturated_updates = 0U;
   float impedance_max_abs_position_error_deg = 0.0f;
@@ -4067,13 +4190,21 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   float torque_peak_abs_iq_a = 0.0f;
   float torque_peak_abs_motor_rpm = 0.0f;
   uint8_t position_target_index = 0U;
+#if FOC_FORCE_SCALE_TEST_ENABLE
+  uint32_t force_contact_candidate_start_tick = 0U;
+  uint32_t force_contact_elapsed_ms = 0U;
+  float force_contact_output_deg = 0.0f;
+  uint8_t force_contact_detected = 0U;
+  uint8_t force_torque_stage_requested = 0U;
+#endif
   uint8_t position_demo_completed =
       (FOC_TORQUE_ONLY_DEMO_ENABLE || FOC_IMPEDANCE_DEMO_ENABLE ||
        FOC_VELOCITY_HEAT_TEST_ENABLE) ? 1U : 0U;
   uint8_t velocity_demo_started =
       FOC_VELOCITY_HEAT_TEST_ENABLE ? 1U : 0U;
   uint8_t velocity_demo_completed =
-      (FOC_TORQUE_ONLY_DEMO_ENABLE || FOC_IMPEDANCE_DEMO_ENABLE) ? 1U : 0U;
+      (FOC_FORCE_SCALE_TEST_ENABLE || FOC_TORQUE_ONLY_DEMO_ENABLE ||
+       FOC_IMPEDANCE_DEMO_ENABLE) ? 1U : 0U;
 #if !FOC_COMPOSITE_DEMO_ENABLE && !FOC_VELOCITY_HEAT_TEST_ENABLE
   uint8_t torque_demo_started =
       FOC_TORQUE_ONLY_DEMO_ENABLE ? 1U : 0U;
@@ -4250,7 +4381,9 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
 
 #if FOC_POSITION_DEMO_ENABLE && \
     (FOC_TORQUE_ONLY_DEMO_ENABLE || FOC_IMPEDANCE_DEMO_ENABLE || \
-     FOC_COMPOSITE_DEMO_ENABLE || FOC_VELOCITY_HEAT_TEST_ENABLE)
+     FOC_PRE_POSITION_IMPEDANCE_ENABLE || FOC_FORCE_SCALE_TEST_ENABLE || \
+     FOC_COMPOSITE_DEMO_ENABLE || \
+     FOC_VELOCITY_HEAT_TEST_ENABLE)
   /* Alignment requires an energized, freely moving shaft.  Remove all gate
    * drive before giving the operator time to attach the torque load. */
   Motor_PWM_Off();
@@ -4285,13 +4418,22 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_debug_speed_integrator_a = 0.0f;
   g_foc_debug_breakaway_current_a = 0.0f;
 #if FOC_POSITION_DEMO_ENABLE
-#if FOC_IMPEDANCE_DEMO_ENABLE || FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_IMPEDANCE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE || \
+    FOC_COMPOSITE_DEMO_ENABLE
   g_foc_output_position_target_deg = FOC_IMPEDANCE_TARGET_OUTPUT_DEG;
   g_foc_output_trajectory_position_deg = FOC_IMPEDANCE_TARGET_OUTPUT_DEG;
   foc_iq_limit_a = FOC_IMPEDANCE_IQ_LIMIT_A;
   g_foc_active_hard_current_limit_a =
       FOC_IMPEDANCE_HARD_CURRENT_LIMIT_A;
   g_foc_active_dq_fault_limit_a = FOC_IMPEDANCE_DQ_FAULT_LIMIT_A;
+#elif FOC_FORCE_SCALE_TEST_ENABLE
+  g_foc_output_position_target_deg =
+      g_foc_output_position_demo_targets_deg[0];
+  foc_iq_limit_a = FOC_FORCE_TEST_APPROACH_IQ_LIMIT_A;
+  g_foc_active_hard_current_limit_a =
+      FOC_FORCE_TEST_APPROACH_HARD_CURRENT_LIMIT_A;
+  g_foc_active_dq_fault_limit_a =
+      FOC_FORCE_TEST_APPROACH_DQ_FAULT_LIMIT_A;
 #else
   g_foc_output_position_target_deg =
       g_foc_output_position_demo_targets_deg[0];
@@ -4364,6 +4506,48 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
          (long)(g_foc_active_hard_current_limit_a * 1000.0f));
   printf("FOC post-alignment arming pause=%lu seconds with PWM inhibited; use a controlled force gauge, not hands\r\n",
          (unsigned long)FOC_IMPEDANCE_ARMING_PAUSE_SEC);
+#elif FOC_FORCE_SCALE_TEST_ENABLE
+  printf("FOC dedicated force-scale test: bounded CCW approach, inferred contact, then one-direction Iq ramp\r\n");
+  printf("FOC force-scale direction sign=%ld/1000 for CCW from the motor front; fallback travel target=%ld mdeg\r\n",
+         (long)(FOC_FORCE_TEST_CCW_SIGN * 1000.0f),
+         (long)(FOC_FORCE_TEST_CCW_SIGN *
+                FOC_FORCE_TEST_CONTACT_OUTPUT_DEG * 1000.0f));
+  printf("FOC approach: max=%ld mRPM output, accel/decel=%ld mRPM/s, Iq clamp=%ld mA; contact requires >=%ld mdeg travel, <=%ld mRPM, >=%ld mA for %lu ms\r\n",
+         (long)(FOC_FORCE_TEST_APPROACH_MAX_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_FORCE_TEST_APPROACH_ACCEL_OUTPUT_RPM_S * 1000.0f),
+         (long)(FOC_FORCE_TEST_APPROACH_IQ_LIMIT_A * 1000.0f),
+         (long)(FOC_FORCE_TEST_CONTACT_MIN_TRAVEL_DEG * 1000.0f),
+         (long)(FOC_FORCE_TEST_CONTACT_MAX_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_FORCE_TEST_CONTACT_MIN_IQ_A * 1000.0f),
+         (unsigned long)FOC_FORCE_TEST_CONTACT_CONFIRM_MS);
+  printf("FOC scale load: target Iq=%ld mA, ramp=%ld mA/s, hold=%lu ms, release by %lu ms, torque overspeed=%ld rpm\r\n",
+         (long)(FOC_FORCE_TEST_TARGET_IQ_A * 1000.0f),
+         (long)(FOC_FORCE_TEST_IQ_RAMP_A_PER_S * 1000.0f),
+         (unsigned long)FOC_FORCE_TEST_TORQUE_HOLD_MS,
+         (unsigned long)FOC_FORCE_TEST_TORQUE_DURATION_MS,
+         (long)FOC_FORCE_TEST_TORQUE_OVERSPEED_MOTOR_RPM);
+  printf("FOC ideal force estimate: output torque=%ld mNm at target Iq; lever-arm assumption=%ld mm (update macro before interpreting scale error)\r\n",
+         (long)(FOC_FORCE_TEST_TARGET_IQ_A *
+                FOC_MOTOR_ESTIMATED_KT_NM_PER_A *
+                FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000.0f),
+         (long)FOC_FORCE_TEST_LEVER_ARM_MM);
+  printf("FOC ideal scale load at assumed lever arm=%ld mN (%ld gram-force), before gearbox and motor losses\r\n",
+         (long)((FOC_FORCE_TEST_TARGET_IQ_A *
+                 FOC_MOTOR_ESTIMATED_KT_NM_PER_A *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000000.0f) /
+                FOC_FORCE_TEST_LEVER_ARM_MM),
+         (long)((FOC_FORCE_TEST_TARGET_IQ_A *
+                 FOC_MOTOR_ESTIMATED_KT_NM_PER_A *
+                 FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000000.0f) /
+                (FOC_FORCE_TEST_LEVER_ARM_MM * 9.80665f)));
+  printf("FOC force-scale protections: approach phase/dq=%ld/%ld mA, load phase/dq=%ld/%ld mA, motor overspeed=%ld rpm, DRV nFAULT active\r\n",
+         (long)(FOC_FORCE_TEST_APPROACH_HARD_CURRENT_LIMIT_A * 1000.0f),
+         (long)(FOC_FORCE_TEST_APPROACH_DQ_FAULT_LIMIT_A * 1000.0f),
+         (long)(FOC_FORCE_TEST_HARD_CURRENT_LIMIT_A * 1000.0f),
+         (long)(FOC_FORCE_TEST_DQ_FAULT_LIMIT_A * 1000.0f),
+         (long)FOC_FORCE_TEST_TORQUE_OVERSPEED_MOTOR_RPM);
+  printf("FOC post-alignment arming pause=%lu seconds with PWM inhibited; keep hands clear of the bar\r\n",
+         (unsigned long)FOC_FORCE_TEST_ARMING_PAUSE_SEC);
 #elif FOC_TORQUE_ONLY_DEMO_ENABLE
   printf("FOC Kt-based torque-control-only demo; position and velocity stages are disabled\r\n");
   printf("FOC motor command: 0 -> +%ld -> 0 -> -%ld -> 0 mNm over %lu ms, ramp=%ld mNm/s\r\n",
@@ -4407,8 +4591,12 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
          (unsigned long)FOC_HEAT_TEST_MEASUREMENT_START_MS,
          (unsigned long)FOC_HEAT_TEST_DECEL_START_MS);
 #else
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
 #if FOC_COMPOSITE_DEMO_ENABLE
   printf("FOC composite stages 1-3: fixed-position impedance, profiled position PID, then velocity PI\r\n");
+#else
+  printf("FOC sequence: fixed-position impedance, profiled position PID, velocity PI, then Kt torque\r\n");
+#endif
   printf("FOC impedance holds %ld mdeg output for %lu ms; stiffness=%ld mNm/output-deg, damping=%ld mA/output-rpm, Iq clamp=%ld mA\r\n",
          (long)(FOC_IMPEDANCE_TARGET_OUTPUT_DEG * 1000.0f),
          (unsigned long)FOC_COMPOSITE_IMPEDANCE_DURATION_MS,
@@ -4444,6 +4632,20 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
          (unsigned long)FOC_IMPEDANCE_LOG_INTERVAL_MS,
          (unsigned long)FOC_POSITION_LOG_INTERVAL_MS,
          (unsigned long)FOC_VELOCITY_LOG_INTERVAL_MS);
+#elif FOC_PRE_POSITION_IMPEDANCE_ENABLE
+  printf("FOC stages: impedance=%lu ms, position allowance=%lu ms, velocity=%lu ms (+%lu settle), torque=%lu ms (+%lu settle); overall safety window=%lu ms\r\n",
+         (unsigned long)FOC_COMPOSITE_IMPEDANCE_DURATION_MS,
+         (unsigned long)FOC_POSITION_TEST_DURATION_MS,
+         (unsigned long)FOC_VELOCITY_DEMO_DURATION_MS,
+         (unsigned long)FOC_VELOCITY_SETTLE_TIMEOUT_MS,
+         (unsigned long)FOC_TORQUE_DEMO_DURATION_MS,
+         (unsigned long)FOC_TORQUE_SETTLE_TIMEOUT_MS,
+         (unsigned long)foc_test_duration_ms);
+  printf("FOC CSV intervals: impedance=%lu ms, position=%lu ms, velocity=%lu ms, torque=%lu ms\r\n",
+         (unsigned long)FOC_IMPEDANCE_LOG_INTERVAL_MS,
+         (unsigned long)FOC_POSITION_LOG_INTERVAL_MS,
+         (unsigned long)FOC_VELOCITY_LOG_INTERVAL_MS,
+         (unsigned long)FOC_TORQUE_LOG_INTERVAL_MS);
 #else
   printf("FOC stages: position allowance=%lu ms, velocity=%lu ms (+%lu settle), torque=%lu ms (+%lu settle); overall safety window=%lu ms\r\n",
          (unsigned long)FOC_POSITION_TEST_DURATION_MS,
@@ -4544,14 +4746,20 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
 
 #if FOC_POSITION_DEMO_ENABLE && \
     (FOC_TORQUE_ONLY_DEMO_ENABLE || FOC_IMPEDANCE_DEMO_ENABLE || \
-     FOC_COMPOSITE_DEMO_ENABLE || FOC_VELOCITY_HEAT_TEST_ENABLE)
+     FOC_PRE_POSITION_IMPEDANCE_ENABLE || FOC_FORCE_SCALE_TEST_ENABLE || \
+     FOC_COMPOSITE_DEMO_ENABLE || \
+     FOC_VELOCITY_HEAT_TEST_ENABLE)
   {
     uint32_t remaining_seconds;
     uint32_t arming_pause_seconds;
     uint16_t torque_ready_angle;
     float torque_ready_electrical_angle_rad;
 
-#if FOC_IMPEDANCE_DEMO_ENABLE || FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_FORCE_SCALE_TEST_ENABLE
+    arming_pause_seconds = FOC_FORCE_TEST_ARMING_PAUSE_SEC;
+    printf("FOC alignment complete; PWM is OFF. Keep clear and verify the bar/scale fixture\r\n");
+#elif FOC_IMPEDANCE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE || \
+    FOC_COMPOSITE_DEMO_ENABLE
     arming_pause_seconds = FOC_IMPEDANCE_ARMING_PAUSE_SEC;
     printf("FOC alignment complete; PWM is OFF. Keep clear and prepare the controlled-force test\r\n");
 #elif FOC_VELOCITY_HEAT_TEST_ENABLE
@@ -4565,7 +4773,11 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
          remaining_seconds > 0U;
          --remaining_seconds)
     {
-#if FOC_IMPEDANCE_DEMO_ENABLE || FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_FORCE_SCALE_TEST_ENABLE
+      printf("FOC force-scale approach starts in %lu seconds\r\n",
+             (unsigned long)remaining_seconds);
+#elif FOC_IMPEDANCE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE || \
+    FOC_COMPOSITE_DEMO_ENABLE
       printf("FOC impedance control starts in %lu seconds\r\n",
              (unsigned long)remaining_seconds);
 #elif FOC_VELOCITY_HEAT_TEST_ENABLE
@@ -4600,7 +4812,10 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
     g_foc_iq_integrator = 0.0f;
     g_foc_id_reference_a = 0.0f;
     g_foc_iq_reference_a = 0.0f;
-#if FOC_IMPEDANCE_DEMO_ENABLE || FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_FORCE_SCALE_TEST_ENABLE
+    printf("FOC arming pause complete; refreshed rotor angle=%ld mdeg. Starting bounded CCW scale approach\r\n",
+#elif FOC_IMPEDANCE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE || \
+    FOC_COMPOSITE_DEMO_ENABLE
     printf("FOC arming pause complete; refreshed rotor angle=%ld mdeg. Starting fixed-angle impedance control\r\n",
 #elif FOC_VELOCITY_HEAT_TEST_ENABLE
     printf("FOC safety pause complete; refreshed rotor angle=%ld mdeg. Starting velocity-only thermal run\r\n",
@@ -4629,7 +4844,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
 #if FOC_POSITION_DEMO_ENABLE
 #if FOC_IMPEDANCE_DEMO_ENABLE
   /* The impedance schedule is referenced directly to start_tick. */
-#elif FOC_COMPOSITE_DEMO_ENABLE
+#elif FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
   impedance_stage_start_tick = start_tick;
 #elif FOC_TORQUE_ONLY_DEMO_ENABLE
   torque_stage_start_tick = start_tick;
@@ -4656,7 +4871,9 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   g_foc_seconds_per_core_cycle = 1.0f / (float)SystemCoreClock;
 #if FOC_POSITION_DEMO_ENABLE && \
     (FOC_TORQUE_ONLY_DEMO_ENABLE || FOC_IMPEDANCE_DEMO_ENABLE || \
-     FOC_COMPOSITE_DEMO_ENABLE || FOC_VELOCITY_HEAT_TEST_ENABLE)
+     FOC_PRE_POSITION_IMPEDANCE_ENABLE || FOC_FORCE_SCALE_TEST_ENABLE || \
+     FOC_COMPOSITE_DEMO_ENABLE || \
+     FOC_VELOCITY_HEAT_TEST_ENABLE)
   /* PWM was deliberately inhibited throughout the loading window.  Compare
    * registers hold a zero voltage vector until the current ISR takes over. */
   Motor_PWM_Enable();
@@ -4672,7 +4889,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
 #if FOC_POSITION_DEMO_ENABLE
 #if !FOC_IMPEDANCE_DEMO_ENABLE
     if (position_demo_completed == 0U &&
-#if FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
         impedance_demo_completed != 0U &&
         (now_tick - position_stage_start_tick) >=
             FOC_POSITION_TEST_DURATION_MS)
@@ -4973,7 +5190,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                   }
                 }
 #else
-#if FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
                 if (impedance_demo_completed == 0U)
                 {
                   uint32_t impedance_elapsed_ms =
@@ -5068,15 +5285,15 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                     g_foc_output_position_target_deg -
                     g_foc_output_trajectory_position_deg;
                 float output_trajectory_stop_rpm = sqrtf(
-                    FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S *
+                    FOC_ACTIVE_POSITION_DECEL_OUTPUT_RPM_S *
                     AbsFloat(output_trajectory_remaining_deg) / 3.0f);
                 float output_trajectory_desired_rpm =
                     (output_trajectory_remaining_deg > 0.0f) ?
                         ClampFloat(output_trajectory_stop_rpm, 0.0f,
-                                   FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM) :
+                                   FOC_ACTIVE_POSITION_MAX_OUTPUT_RPM) :
                     (output_trajectory_remaining_deg < 0.0f) ?
                         -ClampFloat(output_trajectory_stop_rpm, 0.0f,
-                                    FOC_POSITION_TRAJECTORY_MAX_OUTPUT_RPM) :
+                                    FOC_ACTIVE_POSITION_MAX_OUTPUT_RPM) :
                         0.0f;
                 float output_trajectory_old_rpm =
                     output_trajectory_speed_rpm;
@@ -5085,8 +5302,8 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                       output_trajectory_desired_rpm) < 0.0f ||
                      AbsFloat(output_trajectory_desired_rpm) <
                          AbsFloat(output_trajectory_old_rpm)) ?
-                        FOC_POSITION_TRAJECTORY_DECEL_OUTPUT_RPM_S :
-                        FOC_POSITION_TRAJECTORY_ACCEL_OUTPUT_RPM_S;
+                        FOC_ACTIVE_POSITION_DECEL_OUTPUT_RPM_S :
+                        FOC_ACTIVE_POSITION_ACCEL_OUTPUT_RPM_S;
                 float output_trajectory_next_deg;
                 float output_final_position_error_deg;
                 float output_tracking_position_error_deg;
@@ -5159,7 +5376,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                     position_hold_start_tick = now_tick;
                   }
                   else if ((now_tick - position_hold_start_tick) >=
-                           FOC_POSITION_HOLD_MS)
+                           FOC_ACTIVE_POSITION_HOLD_MS)
                   {
                     if ((uint8_t)(position_target_index + 1U) <
                         position_target_count)
@@ -5176,6 +5393,9 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                       position_demo_final_output_deg = output_position_deg;
                       position_demo_final_motor_deg = motor_position_deg;
                       position_demo_completed = 1U;
+#if FOC_FORCE_SCALE_TEST_ENABLE
+                      force_torque_stage_requested = 1U;
+#else
                       velocity_demo_started = 1U;
                       velocity_stage_start_tick = now_tick;
                       velocity_stage_start_elapsed_ms =
@@ -5201,6 +5421,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                       g_foc_debug_speed_integrator_a = 0.0f;
                       g_foc_debug_breakaway_current_a = 0.0f;
                       g_foc_debug_iq_saturated = 0U;
+#endif
                     }
                   }
                 }
@@ -5224,15 +5445,15 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                 {
                   float integrator_delta_a =
                       FOC_OUTPUT_DIRECTION_SIGN *
-                      FOC_POSITION_KI_A_PER_OUTPUT_DEG_S *
+                      FOC_ACTIVE_POSITION_KI_A_PER_OUTPUT_DEG_S *
                       output_tracking_position_error_deg * position_dt_s;
                   float integrator_candidate_a;
                   float disturbance_boost_a = 0.0f;
                   float iq_pd_a =
                       FOC_OUTPUT_DIRECTION_SIGN *
-                      ((FOC_POSITION_KP_A_PER_OUTPUT_DEG *
+                      ((FOC_ACTIVE_POSITION_KP_A_PER_OUTPUT_DEG *
                         output_tracking_position_error_deg) +
-                       (FOC_POSITION_KD_A_PER_OUTPUT_RPM *
+                       (FOC_ACTIVE_POSITION_KD_A_PER_OUTPUT_RPM *
                         output_speed_error_rpm));
                   float iq_candidate_a;
                   float iq_candidate_clamped_a;
@@ -5243,6 +5464,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                    * slowly.  This proportional boost is immediate and fades
                    * smoothly with both recovered position and shaft speed;
                    * the integral then learns only the sustained load torque. */
+#if !FOC_FORCE_SCALE_TEST_ENABLE
                   if (AbsFloat(output_tracking_position_error_deg) >
                       FOC_POSITION_DISTURBANCE_ONSET_OUTPUT_DEG)
                   {
@@ -5279,6 +5501,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                         disturbance_speed_fraction;
                     iq_pd_a += disturbance_boost_a;
                   }
+#endif
 
                   /* When a disturbance is released, the position error reverses
                    * before the stored load-torque estimate does.  Unload that
@@ -5346,7 +5569,86 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                   {
                     position_iq_saturated_updates++;
                   }
+
+#if FOC_FORCE_SCALE_TEST_ENABLE
+                  /* The rigid scale stops the bar before the nominal travel
+                   * target, so a normal position-settle transition cannot
+                   * occur. Treat sustained near-zero output speed at the
+                   * bounded approach-current clamp as contact. Requiring
+                   * directional travel and remaining trajectory error keeps
+                   * normal acceleration and arrival at the fallback target
+                   * out of this path. */
+                  if ((FOC_FORCE_TEST_CCW_SIGN * output_position_deg) >=
+                          FOC_FORCE_TEST_CONTACT_MIN_TRAVEL_DEG &&
+                      (FOC_FORCE_TEST_CCW_SIGN *
+                       output_final_position_error_deg) >=
+                          FOC_FORCE_TEST_CONTACT_MIN_REMAINING_DEG &&
+                      AbsFloat(output_rpm_filtered) <=
+                          FOC_FORCE_TEST_CONTACT_MAX_OUTPUT_RPM &&
+                      AbsFloat(g_foc_iq_reference_a) >=
+                          FOC_FORCE_TEST_CONTACT_MIN_IQ_A)
+                  {
+                    if (force_contact_candidate_start_tick == 0U)
+                    {
+                      force_contact_candidate_start_tick = now_tick;
+                    }
+                    else if ((now_tick -
+                              force_contact_candidate_start_tick) >=
+                             FOC_FORCE_TEST_CONTACT_CONFIRM_MS)
+                    {
+                      force_contact_detected = 1U;
+                      force_contact_elapsed_ms = now_tick - start_tick;
+                      force_contact_output_deg = output_position_deg;
+                      position_demo_final_output_deg = output_position_deg;
+                      position_demo_final_motor_deg = motor_position_deg;
+                      position_demo_completed = 1U;
+                      force_torque_stage_requested = 1U;
+                    }
+                  }
+                  else
+                  {
+                    force_contact_candidate_start_tick = 0U;
+                  }
+#endif
                 }
+
+#if FOC_FORCE_SCALE_TEST_ENABLE
+                if (force_torque_stage_requested != 0U &&
+                    g_foc_enabled != 0U)
+                {
+                  force_torque_stage_requested = 0U;
+                  torque_demo_started = 1U;
+                  torque_stage_start_tick = now_tick;
+                  torque_stage_start_elapsed_ms = now_tick - start_tick;
+                  FOC_LogSampleCapture(now_tick - start_tick,
+                                       mechanical_rpm_filtered);
+                  last_log_tick = now_tick;
+                  foc_log_interval_ms = FOC_TORQUE_LOG_INTERVAL_MS;
+                  foc_min_current_samples_per_log =
+                      FOC_TORQUE_MIN_CURRENT_SAMPLES_PER_LOG;
+                  foc_overspeed_rpm =
+                      FOC_FORCE_TEST_TORQUE_OVERSPEED_MOTOR_RPM;
+                  foc_iq_limit_a = FOC_FORCE_TEST_TARGET_IQ_A;
+                  g_foc_active_hard_current_limit_a =
+                      FOC_FORCE_TEST_HARD_CURRENT_LIMIT_A;
+                  g_foc_active_dq_fault_limit_a =
+                      FOC_FORCE_TEST_DQ_FAULT_LIMIT_A;
+                  /* Preserve the approach torque at contact. Resetting Iq to
+                   * zero here lets the compressed scale/fixture rebound
+                   * before the force ramp begins, which can create a false
+                   * overspeed fault during an otherwise valid handoff. */
+                  torque_motor_reference_nm =
+                      (g_foc_iq_reference_a /
+                       FOC_OUTPUT_DIRECTION_SIGN) *
+                      FOC_MOTOR_ESTIMATED_KT_NM_PER_A;
+                  g_foc_speed_reference_rpm = 0.0f;
+                  g_foc_debug_position_error_deg = 0.0f;
+                  g_foc_debug_speed_error_rpm = 0.0f;
+                  g_foc_debug_speed_integrator_a = 0.0f;
+                  g_foc_debug_breakaway_current_a = 0.0f;
+                  g_foc_debug_iq_saturated = 0U;
+                }
+#endif
                 }
                 else if (velocity_demo_completed == 0U &&
                          g_foc_enabled != 0U)
@@ -5525,6 +5827,20 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                   float torque_desired_motor_nm;
                   float torque_iq_reference_a;
 
+#if FOC_FORCE_SCALE_TEST_ENABLE
+                  if (torque_elapsed_ms <
+                      (FOC_FORCE_TEST_TORQUE_RAMP_MS +
+                       FOC_FORCE_TEST_TORQUE_HOLD_MS))
+                  {
+                    torque_desired_motor_nm =
+                        FOC_FORCE_TEST_CCW_SIGN *
+                        FOC_ACTIVE_TORQUE_TARGET_MOTOR_NM;
+                  }
+                  else
+                  {
+                    torque_desired_motor_nm = 0.0f;
+                  }
+#else
                   if (torque_elapsed_ms <
                       FOC_TORQUE_POSITIVE_END_MS)
                   {
@@ -5544,11 +5860,12 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                   {
                     torque_desired_motor_nm = 0.0f;
                   }
+#endif
 
                   torque_motor_reference_nm = RampToward(
                       torque_motor_reference_nm,
                       torque_desired_motor_nm,
-                      FOC_TORQUE_RAMP_MOTOR_NM_PER_S,
+                      FOC_ACTIVE_TORQUE_RAMP_MOTOR_NM_PER_S,
                       position_dt_s);
                   torque_iq_reference_a =
                       torque_motor_reference_nm /
@@ -5586,7 +5903,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                   }
 
                   if (torque_elapsed_ms >=
-                          FOC_TORQUE_DEMO_DURATION_MS &&
+                          FOC_ACTIVE_TORQUE_DURATION_MS &&
                       AbsFloat(torque_motor_reference_nm) < 0.002f &&
                       AbsFloat(g_foc_iq_a) < 0.5f)
                   {
@@ -5596,8 +5913,8 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                     Motor_PWM_Off();
                   }
                   else if (torque_elapsed_ms >=
-                           (FOC_TORQUE_DEMO_DURATION_MS +
-                            FOC_TORQUE_SETTLE_TIMEOUT_MS))
+                           (FOC_ACTIVE_TORQUE_DURATION_MS +
+                            FOC_ACTIVE_TORQUE_SETTLE_TIMEOUT_MS))
                   {
                     g_foc_fault = 12U;
                     g_foc_iq_reference_a = 0.0f;
@@ -5700,8 +6017,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
     {
       g_foc_fault = 5U;
       g_foc_enabled = 0U;
-      Motor_Fault_Shutdown();
-      printf("FOC stopped: DRV8353S nFAULT asserted\r\n");
+      Motor_ReportDRVFaultAndShutdown("FOC run");
     }
 
     if ((now_tick - last_log_tick) >= foc_log_interval_ms)
@@ -5743,7 +6059,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
     Motor_PWM_Off();
   }
 #else
-#if FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
   if (g_foc_fault == 0U && impedance_demo_completed == 0U)
   {
     g_foc_fault = 13U;
@@ -5853,7 +6169,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
     printf("FOC stopped: impedance current did not settle to zero before timeout\r\n");
   }
 #else
-#if FOC_COMPOSITE_DEMO_ENABLE
+#if FOC_COMPOSITE_DEMO_ENABLE || FOC_PRE_POSITION_IMPEDANCE_ENABLE
   printf("FOC impedance result: completed=%u, duration=%lu ms, target=%ld mdeg output, controller_updates=%lu, Iq_saturated=%lu, max_abs_error=%ld mdeg, peak_abs_Iq=%ld mA => %ld mNm ideal output torque\r\n",
          (unsigned int)impedance_demo_completed,
          (unsigned long)FOC_COMPOSITE_IMPEDANCE_DURATION_MS,
@@ -5891,6 +6207,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
                     (((float)g_foc_mechanical_position_counts * 360000.0f) /
                      16384.0f)));
 #endif
+#if !FOC_FORCE_SCALE_TEST_ENABLE
   printf("FOC velocity result: started=%u at %lu ms, completed=%u, target=%ld mRPM output (%ld rpm motor), final_reference=%ld mRPM, final_speed=%ld mRPM, peak_speed=%ld mRPM\r\n",
          (unsigned int)velocity_demo_started,
          (unsigned long)velocity_stage_start_elapsed_ms,
@@ -5907,7 +6224,32 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
          (long)(velocity_max_abs_error_output_rpm * 1000.0f),
          (long)(velocity_integrator_a * 1000.0f));
 #endif
+#endif
 #if !FOC_COMPOSITE_DEMO_ENABLE && !FOC_VELOCITY_HEAT_TEST_ENABLE
+#if FOC_FORCE_SCALE_TEST_ENABLE
+  printf("FOC force-scale contact: detected=%u at %lu ms, output=%ld mdeg\r\n",
+         (unsigned int)force_contact_detected,
+         (unsigned long)force_contact_elapsed_ms,
+         (long)(force_contact_output_deg * 1000.0f));
+  printf("FOC velocity stage intentionally skipped for force-scale mode: started=%u, start=%lu ms, completed=%u, final_speed=%ld mRPM\r\n",
+         (unsigned int)velocity_demo_started,
+         (unsigned long)velocity_stage_start_elapsed_ms,
+         (unsigned int)velocity_demo_completed,
+         (long)(velocity_final_output_rpm * 1000.0f));
+  printf("FOC force-scale result: started=%u at %lu ms, completed=%u, target_Iq=%ld mA, measured_peak_abs_Iq=%ld mA, ideal_output_torque=%ld mNm, peak_abs_motor_speed=%ld rpm, final_speed=%ld rpm\r\n",
+         (unsigned int)torque_demo_started,
+         (unsigned long)torque_stage_start_elapsed_ms,
+         (unsigned int)torque_demo_completed,
+         (long)(FOC_FORCE_TEST_TARGET_IQ_A * 1000.0f),
+         (long)(torque_peak_abs_iq_a * 1000.0f),
+         (long)(torque_peak_abs_iq_a *
+                FOC_MOTOR_ESTIMATED_KT_NM_PER_A *
+                FOC_MOTOR_TO_OUTPUT_GEAR_RATIO * 1000.0f),
+         (long)torque_peak_abs_motor_rpm,
+         (long)mechanical_rpm_filtered);
+  printf("FOC force-scale law: contact-gated one-direction Iq ramp, no position/velocity outer loop during loading; assumed lever arm=%ld mm\r\n",
+         (long)FOC_FORCE_TEST_LEVER_ARM_MM);
+#else
   printf("FOC torque result: started=%u at %lu ms, completed=%u, command_peak=%ld mNm motor (%ld mNm ideal output), measured_peak_abs_Iq=%ld mA => %ld mNm motor (%ld mNm ideal output), peak_abs_motor_speed=%ld rpm, final_speed=%ld rpm\r\n",
          (unsigned int)torque_demo_started,
          (unsigned long)torque_stage_start_elapsed_ms,
@@ -5926,6 +6268,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   printf("FOC torque controller updates=%lu; Iq*=torque/Kt, Id*=0, with no position/velocity outer-loop integral\r\n",
          (unsigned long)torque_control_updates);
 #endif
+#endif
   if (g_foc_fault == 10U)
   {
     printf("FOC stopped: position sequence did not settle before the step or overall timeout\r\n");
@@ -5940,7 +6283,7 @@ static void Motor_FOC_Demo(uint8_t deadtime_ticks)
   }
   else if (g_foc_fault == 13U)
   {
-    printf("FOC stopped: composite impedance stage did not complete before timeout\r\n");
+    printf("FOC stopped: pre-position impedance stage did not complete before timeout\r\n");
   }
 #endif
 #endif
@@ -7387,6 +7730,25 @@ int main(void)
   printf("After alignment there is a %lu-second PWM-off safety countdown; use the heat gun without approaching the rotating shaft\r\n",
          (unsigned long)FOC_HEAT_TEST_ARMING_PAUSE_SEC);
   printf("STATUS_2 turns on for the 60-second target-speed measurement window and turns off before deceleration\r\n");
+#elif FOC_FORCE_SCALE_TEST_ENABLE
+  printf("Selected test: contact-gated CCW force-scale loading\r\n");
+  printf("Profile: approach toward %ld mdeg at no more than %ld mRPM output, detect rigid contact, then ramp to %ld mA Iq and hold for %lu ms\r\n",
+         (long)(FOC_FORCE_TEST_CCW_SIGN *
+                FOC_FORCE_TEST_CONTACT_OUTPUT_DEG * 1000.0f),
+         (long)(FOC_FORCE_TEST_APPROACH_MAX_OUTPUT_RPM * 1000.0f),
+         (long)(FOC_FORCE_TEST_TARGET_IQ_A * 1000.0f),
+         (unsigned long)FOC_FORCE_TEST_TORQUE_HOLD_MS);
+  printf("Configured CCW direction sign=%ld/1000 when facing the motor front; PWM-off arming pause=%lu seconds\r\n",
+         (long)(FOC_FORCE_TEST_CCW_SIGN * 1000.0f),
+         (unsigned long)FOC_FORCE_TEST_ARMING_PAUSE_SEC);
+#elif FOC_PRE_POSITION_IMPEDANCE_ENABLE
+  printf("Selected tests: fixed-position impedance -> position PID -> velocity PI -> Kt-based torque control\r\n");
+  printf("Impedance: target=%ld mdeg, stiffness=%ld mNm/output-deg for %lu seconds; then the existing position sequence begins\r\n",
+         (long)(FOC_IMPEDANCE_TARGET_OUTPUT_DEG * 1000.0f),
+         (long)(FOC_IMPEDANCE_STIFFNESS_NM_PER_OUTPUT_DEG * 1000.0f),
+         (unsigned long)(FOC_COMPOSITE_IMPEDANCE_DURATION_MS / 1000U));
+  printf("After alignment there is a %lu-second PWM-off arming pause before impedance control\r\n",
+         (unsigned long)FOC_IMPEDANCE_ARMING_PAUSE_SEC);
 #elif FOC_COMPOSITE_DEMO_ENABLE
   printf("Selected five-stage demo: fixed-position impedance -> FOC position -> FOC velocity -> open-loop SVPWM velocity -> open-loop six-step velocity\r\n");
   printf("Durations: impedance=%lu s, position allowance=%lu s, FOC velocity=%lu s, SVPWM=%lu s plus alignment, six-step=%lu s\r\n",
