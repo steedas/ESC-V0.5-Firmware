@@ -6,7 +6,7 @@ STM32G431RBT6 and a DRV8353S three-phase gate driver.
 The project is an active motor-control development platform. It now includes
 hardware bring-up tools, synchronized phase-current sensing, encoder feedback,
 open-loop commutation, field-oriented control (FOC), experimental SVPWM
-schedulers, and an initial CAN control-plane prototype.
+schedulers, and two-board CAN position control.
 
 > [!WARNING]
 > This firmware controls high-current power electronics and is not
@@ -17,25 +17,61 @@ schedulers, and an initial CAN control-plane prototype.
 
 ## Current Build
 
-The repository is currently configured to run the encoder-based FOC demo. The
-experimental Will SVPWM path is disabled but preserved in the source.
+The default local build runs one guarded four-stage FOC test through the new
+7-pole-pair motor and 19:1 gearbox. After alignment and a five-second PWM-off
+countdown, it executes a 25-target bidirectional position choreography. It
+progresses through mirrored +/-90, +/-180, and +/-245 degree excursions, sweeps
+continuously from +360 to -360 and back, then finishes with asymmetric
+cross-zero moves (120, -240, 300, -60, 0 degrees). The position trajectory
+permits 180 output rpm and uses 600 output-rpm/s acceleration and deceleration
+with a 750 ms dwell at each endpoint. The position and velocity controllers
+may command up to 50 A Iq; D/Q and phase-current trips are 75 A and 78 A.
+
+The second stage commands output-speed plateaus of 25, 50, 100, 150, and
+approximately 394.7 rpm with 50 output-rpm/s acceleration and 250 output-rpm/s
+deceleration. Each initial step lasts three seconds. The final command is
+capped at exactly 7500 motor rpm through the 19:1 ratio and is held for roughly
+four seconds after its ramp completes. The reference then ramps to zero and
+must remain inside the stop-speed tolerance continuously for one second. The
+normal profiled position controller then returns the output to the nearest
+360-degree equivalent of the angle recorded at the start of position control.
+It never unwinds accumulated velocity revolutions. Only after that position
+has settled does the third stage engage its 0.20 N m/output-degree virtual
+spring for 30 seconds. Stiffness is ramped to zero over three seconds before
+PWM is removed. Its overspeed cutoff is 10000 motor rpm, equivalent to
+approximately 526.3 output rpm at 19:1.
+
+For the high-inertia tube, velocity PI is reduced to 0.075 A/output-rpm
+proportional and 0.01 A/(output-rpm*s) integral, with a 5 A integral clamp and
+6x reverse-error unwind. The zero-speed handoff window is eight seconds.
+
+The current PI uses a two-sample D/Q moving average while current protection
+continues to use raw samples. Position and velocity operation use a 50 A Iq
+command clamp, 75 A abnormal d/q-current trip, 78 A raw phase-current trip,
+and 8250 motor-rpm overspeed limit. The compliant stiffness stage uses a 13 A
+Iq clamp, 20 A d/q trip, and 22 A phase trip. Use a guarded mechanism, external
+bus monitoring, and a hardware power disconnect.
 
 | Selector | Value | Effect |
 | --- | ---: | --- |
 | `WILL_SVPWM_EXPERIMENT_ENABLE` | `0` | Excludes the standalone SVPWM probe from startup |
 | `MOTOR_FOC_DEMO_ENABLE` | `1` | Selects `Motor_FOC_Demo()` |
-| `FOC_POSITION_DEMO_ENABLE` | `1` | Enables the geared position/velocity/torque sequence |
+| `FOC_POSITION_DEMO_ENABLE` | `1` | Enables the shared geared-output FOC demo infrastructure |
+| `FOC_ALL_IN_ONE_TEST_ENABLE` | Derived `1` | Runs position, stepped velocity, profiled return, then stiffness locally |
+| `FOC_MASS_POWER_DEMO_ENABLE` | `0` | Rotating-mass power demo disabled |
 | `FOC_TORQUE_ONLY_DEMO_ENABLE` | `0` | Does not bypass position and velocity stages |
 | `FOC_IMPEDANCE_DEMO_ENABLE` | `0` | Impedance-only profile disabled |
-| `FOC_PRE_POSITION_IMPEDANCE_ENABLE` | `0` | Pre-position stiffness sequence disabled |
-| `FOC_FORCE_SCALE_TEST_ENABLE` | `1` | Selects the bounded bar-and-scale force test |
+| `FOC_PRE_POSITION_IMPEDANCE_ENABLE` | Derived `0` | Restores the stiffness/position/velocity demo when the mass selector is `0` |
+| `FOC_CAN_POSITION_DEMO_ENABLE` | Role-derived | Selects live remote position control on device 1 |
+| `FOC_FORCE_SCALE_TEST_CONFIG_ENABLE` | `0` | Bounded force-scale test disabled |
 | `FOC_COMPOSITE_DEMO_ENABLE` | `0` | Five-stage composite profile disabled |
 | `FOC_VELOCITY_HEAT_TEST_ENABLE` | `0` | Long 5000 rpm thermal profile disabled |
 | `FOC_CURRENT_STEP_TEST_ENABLE` | `0` | Current-step diagnostic disabled |
 | `FOC_LOW_SPEED_VELOCITY_TEST_ENABLE` | `0` | Low-speed diagnostic disabled |
-| `CAN_FIRMWARE_ROLE` | `0` | CAN role prototype disabled |
+| `CAN_FIRMWARE_ROLE` | `0` | Local demo build; CAN actuator/controller roles disabled |
 
-The selected FOC run performs automatic rotor alignment, a five-second PWM-off
+When the CAN role is disabled, the preserved FOC force-scale run performs
+automatic rotor alignment, a five-second PWM-off
 arming pause, a slow current-limited move toward the CCW scale, and a
 single-direction torque-current ramp after rigid contact is detected. Contact
 requires at least 0.25 output degree of travel followed by 500 ms below 0.25
@@ -46,7 +82,7 @@ contacted at about -0.377 degrees. The old -45-degree position-settle
 requirement—and then the original 1-degree travel gate—kept the load stage from
 starting.
 
-The active load profile allows seven seconds to reach a 70 A command at
+The preserved load profile allows seven seconds to reach a 70 A command at
 10 A/s, holds for at least 0.25 second, and ramps back to zero over seven
 seconds. The 6 A
 position-controlled approach has separate 12 A phase and 10 A d/q thresholds
@@ -57,8 +93,8 @@ overspeed shutdown, DRV `nFAULT` monitoring, and the
 PWM-off completion path remain active. At the configured 11:1 gear ratio,
 estimated 0.02984 N m/A motor Kt, and configured 238.1 mm measured lever arm, the
 40 A, 50 A, 60 A, and 66 A runs produced 12.443 N m, 15.944 N m, 18.182 N m,
-and 19.074 N m. Scaling the latest result gives 69.2 A for 20.0 N m. The active
-70 A target predicts approximately 20.23 N m and an 8660 g scale reading. FOC
+and 19.074 N m. The validated 70 A run produced 20.034 N m from an 8577 g scale
+reading, meeting the 20 N m target. FOC
 starts with 56 TIM1 dead-time ticks,
 approximately 500 ns at the 112 MHz timer clock.
 
@@ -154,8 +190,8 @@ Electrical and mechanical rotation are related by the motor's pole-pair count:
 mechanical RPM = electrical Hz x 60 / pole pairs
 ```
 
-The configured motor has 14 pole pairs, so one mechanical revolution requires
-14 electrical revolutions.
+The configured motor has 7 pole pairs, so one mechanical revolution requires
+7 electrical revolutions.
 
 ### SVPWM continuity and acoustic-noise investigation
 
@@ -202,18 +238,55 @@ The disabled probe constants are currently 100 electrical Hz, 120 seconds, and
 
 ### CAN progress
 
-An initial classic-CAN control-plane protocol is present but disabled by
-default. It includes:
+Classic-CAN protocol revision 5 connects the remote position packets to the
+proven encoder-based FOC position loop. The current default build selects the
+Device 1 actuator role, with both matched role images preserved separately. It
+includes:
 
 - 1 Mbit/s FDCAN configuration
 - Node heartbeat and status flags
 - Global emergency-stop identifier
 - State-command parsing and validation
+- Signed millidegree position commands with bounded output-speed fields
+- Exact position-command receipt acknowledgement before each scripted move
+- Measured output position, speed, Iq, Iq reference, and target-error feedback
+- `AT_TARGET` only after a continuous 300 ms position/speed settle dwell
+- A single remote position PID with 0.25 A/degree proportional, 0.05
+  A/(degree s) integral, and 0.20 A/rpm derivative gains, a 1 A integral
+  clamp, standard conditional anti-windup, and no disturbance boost or nested
+  velocity controller
+- A bounded position-reference profile with the commanded speed as its ceiling
+  and 100 rpm/s output acceleration and deceleration
+- A 15-second absolute actuator settle timeout that intermittent stable samples
+  cannot extend
+- Device 2 measured-completion validation with a 16-second supervisory timeout
+- Immediate E-stop plus heartbeat removal on sender timeout
+- Idempotent duplicate handling and stale/conflicting sequence rejection
+- Persistent nonblocking Device 1 service across DISABLED, E-stop, and clear
+- A nonblocking 2048-byte Device 2 UART log queue so 9600-baud text cannot
+  delay CAN heartbeat, retry, or completion processing
+- Controller heartbeat at 100 ms and a 350 ms actuator watchdog
+- A position-ready interlock after encoder alignment
+- Current-limited live FOC with a 6 A Iq command ceiling
 - Fault-latched safe states and forced PWM inhibition
 - A second-device sender/test-controller role
 
-This is currently a safe control-plane increment, not a completed motor command
-or telemetry interface.
+The sender scripts `0`, `+45`, `+90`, `+45`, `0`, `-45`, `-90`, `-45`, and `0`
+output-degree targets at a 100 rpm trajectory limit. Protocol revision 5 uses
+0.1-rpm units for command and feedback speed, so the two-byte value `1000`
+means 100.0 output rpm. Device 1 validates `+/-180` output-degree and
+0.1--400.0 output-rpm bounds, echoes each accepted packet, and executes the
+small sweep only after
+alignment, a valid controller heartbeat, `ARMED`, and `ACTIVE`. The live demo
+uses 6 A Iq, 12 A hard phase-current, and 10 A abnormal d/q-current limits. The
+100 output-rpm command corresponds to approximately 1100 motor rpm through the
+configured 11:1 gearbox; the overspeed shutdown is 5000 motor rpm. Loss of the
+controller heartbeat while ACTIVE immediately inhibits
+PWM and the gate driver and latches CAN fault 2. Device 2 does not treat the
+receipt echo as motion completion: it requires the matching applied sequence,
+`AT_TARGET`, no more than 0.25 output degree of error, and no more than 0.2
+output rpm. See `CAN_DEVICE2_DEMO.md` for the exact frames, flash order, and
+test procedure.
 
 ## Hardware Target
 
@@ -228,8 +301,8 @@ or telemetry interface.
 | Current sensing | ADC1 channels 6, 7, and 8 |
 | Current shunts / CSA | 1 mOhm / verified 20 V/V |
 | Rotor encoder | AS5048A over SPI3 |
-| Motor pole pairs | 14 |
-| Motor/output gear ratio | 11:1 |
+| Motor pole pairs | 7 |
+| Motor/output gear ratio | 19:1 |
 | Gate-driver diagnostics | SPI1/bit-banged PA4-PA7 path |
 | Communications | USART1, FDCAN1, USB |
 | Debug interface | SWD |
@@ -271,6 +344,9 @@ Regenerating code from the `.ioc` file may overwrite changes made outside STM32
 4. Build and flash through ST-LINK/SWD.
 5. Observe the complete UART startup diagnostics before enabling bus power.
 
+Matched role-specific CAN images are also generated under `Debug/Device1` and
+`Debug/Device2`; use those files for the two-board position demonstration.
+
 The command-line build uses the generated makefiles in `Debug/` and
 `mingw32-make` supplied with STM32CubeIDE.
 
@@ -284,9 +360,12 @@ The command-line build uses the generated makefiles in `Debug/` and
 4. Confirm current offsets and noise while PWM is inhibited.
 5. Check encoder direction, angle continuity, and magnet diagnostics.
 6. Energize at reduced bus voltage with a strict supply-current limit.
-7. Keep the shaft unloaded for automatic FOC alignment and speed tests.
+7. Keep the shaft unloaded for automatic FOC alignment. For the rotating-mass
+   demo, attach the secured load only during the PWM-off countdown, let it hang
+   vertically down for zero capture, then clear and guard the swept volume.
 8. Use a secured fixture for torque or impedance tests; do not restrain the
-   shaft by hand.
+   shaft by hand. Use external DC-bus voltage monitoring and an energy-absorbing
+   bus path for any test that commands regenerative torque.
 9. Stop immediately for a DRV fault, unexpected current, rapid heating, loss of
    synchronization, or incorrect encoder motion.
 
